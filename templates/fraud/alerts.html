@@ -1,0 +1,46 @@
+{% extends "fraud/base.html" %}
+{% block title %}Alert Queue — Bankio{% endblock %}
+{% block page %}
+<h1 class="text-xl font-bold mb-5">Fraud Alert Queue</h1>
+<form method="get" class="flex gap-2 mb-4 text-sm">
+  <select name="status" class="border rounded-xl px-3 py-1.5">
+    <option value="">Any status</option>
+    {% for s in "OPEN,ACKNOWLEDGED,ESCALATED,CLOSED" %}
+      <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <select name="severity" class="border rounded-xl px-3 py-1.5">
+    <option value="">Any severity</option>
+    <option value="HIGH" {% if severity == "HIGH" %}selected{% endif %}>HIGH</option>
+    <option value="MEDIUM" {% if severity == "MEDIUM" %}selected{% endif %}>MEDIUM</option>
+  </select>
+  <button class="btn-primary !py-1.5 text-xs">Filter</button>
+</form>
+<div class="space-y-3 max-w-3xl">
+{% for a in alerts %}
+  <div class="card p-5 flex flex-wrap items-center justify-between gap-3">
+    <div class="text-sm">
+      <p class="font-semibold">
+        {{ a.alert_type }}
+        <span class="{% if a.severity == 'HIGH' %}text-red-600{% else %}text-amber-600{% endif %} font-bold">{{ a.severity }}</span>
+      </p>
+      <p class="text-gray-500 text-xs">
+        {{ a.customer.username|default:"—" }} · {{ a.status }} · {{ a.created_at|date:"d M H:i" }}
+        {% if a.evaluation %}· score {{ a.evaluation.risk_score }} ({{ a.evaluation.risk_level }}){% endif %}
+      </p>
+    </div>
+    <div class="flex gap-2">
+      {% if a.status == "OPEN" %}
+        <form method="post" action="{% url 'fraud:acknowledge_alert' a.pk %}">{% csrf_token %}
+          <button class="px-3 py-1.5 text-xs rounded-xl border border-gray-200">Acknowledge</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{% url 'fraud:open_case_from_alert' a.pk %}"
+            onsubmit="return confirm('Open an investigation case?');">{% csrf_token %}
+        <button class="px-3 py-1.5 text-xs rounded-xl bg-rose-950 text-white">Open Case</button>
+      </form>
+    </div>
+  </div>
+{% empty %}<div class="card p-6 text-sm text-gray-400">No alerts match the filters.</div>{% endfor %}
+</div>
+{% endblock %}

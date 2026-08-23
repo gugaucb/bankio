@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex min-h-screen">
+  <aside class="hidden lg:flex flex-col w-60 shrink-0 bg-rose-950 text-rose-50 p-4 gap-0.5 text-sm">
+    <div class="flex items-center gap-2 px-2 py-3 mb-3">
+      <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-900 grid place-items-center font-bold">F</div>
+      <div><p class="font-bold leading-tight">Fraud Ops</p><p class="text-[10px] text-rose-300">mode: {{ engine_mode|default:"—" }}</p></div>
+    </div>
+    <a href="{% url 'fraud:dashboard' %}" class="px-3 py-2 rounded-lg hover:bg-rose-900 {% if request.path == '/fraud/' %}bg-rose-800{% endif %}">▤ Overview</a>
+    <a href="{% url 'fraud:alert_queue' %}" class="px-3 py-2 rounded-lg hover:bg-rose-900">🚨 Alert Queue</a>
+    <div class="mt-auto flex flex-col gap-0.5">
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+        <button class="px-3 py-2 rounded-lg hover:bg-rose-900 w-full text-left">↪ Sign out</button>
+      </form>
+    </div>
+  </aside>
+  <main class="flex-1 min-w-0 p-4 md:p-8 bg-[#f7f4f5] overflow-x-hidden">
+    {% if messages %}{% for m in messages %}<div class="mb-4 text-sm {% if m.tags == 'error' %}bg-red-50 text-red-900{% else %}bg-emerald-50 text-emerald-900{% endif %} rounded-xl p-3">{{ m }}</div>{% endfor %}{% endif %}
+    {% block page %}{% endblock %}
+  </main>
+</div>
+{% endblock %}
