@@ -142,6 +142,28 @@ class LedgerProofBatch(models.Model):
         ]
 
 
+class LedgerAnchor(models.Model):
+    """External anchoring record for a sealed proof batch."""
+
+    class Status(models.TextChoices):
+        CREATED = "CREATED"
+        SUBMITTED = "SUBMITTED"
+        CONFIRMING = "CONFIRMING"
+        CONFIRMED = "CONFIRMED"
+        FAILED = "FAILED"
+        SUPERSEDED = "SUPERSEDED"
+
+    batch = models.ForeignKey(LedgerProofBatch, on_delete=models.PROTECT, related_name="anchors")
+    provider = models.CharField(max_length=64)
+    anchor_reference = models.CharField(max_length=128, blank=True)
+    idempotency_key = models.CharField(max_length=200)
+    commitment = models.CharField(max_length=64)
+    status = models.CharField(max_length=12, choices=Status.choices, default="CREATED")
+    error = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+
+
 class LedgerIdempotencyRecord(models.Model):
     """Marks a financial operation as already executed.
 
