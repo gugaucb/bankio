@@ -68,14 +68,20 @@ def approve(application, manager):
     application.status = "APPROVED"
     application.reviewed_by = manager
     application.save(update_fields=["status", "reviewed_by"])
-    return disburse(application)
+    result = disburse(application)
+    application.status = result.status  # reflect disbursement outcome on caller's instance
+    return application
 
 
 @transaction.atomic
 def disburse(application):
-    existing = ledger.find_idempotent(f"loan-disburse:{application.pk}")
+    locked = LoanApplication.objects.select_for_update().get(pk=application.pk)
+    existing = ledger.find_idempotent(f"loan-disburse:{locked.pk}")
     if existing:
-        return LoanApplication.objects.get(pk=existing.result["application_id"])
+        refreshed = LoanApplication.objects.get(pk=existing.result["application_id"])
+        application.status = refreshed.status
+        return application
+    application = locked  # operate on the row-locked instance
     account = application.disbursed_account
     if account.status != AccountStatus.ACTIVE:
         raise ValueError("Disbursement account not active")
@@ -108,10 +114,15 @@ def disburse(application):
 
 @transaction.atomic
 def repay_installment(schedule, actor, idempotency_key=None):
+    original = schedule
+    schedule = RepaymentSchedule.objects.select_for_update().get(pk=schedule.pk)
     key = f"loan-repay:{idempotency_key}" if idempotency_key else f"loan-repay:{schedule.pk}"
     existing = ledger.find_idempotent(key)
     if existing:
-        return RepaymentSchedule.objects.get(pk=existing.result["schedule_id"])
+        refreshed = RepaymentSchedule.objects.get(pk=existing.result["schedule_id"])
+        original.paid_at = refreshed.paid_at
+        original.journal_id = refreshed.journal_id
+        return original
     if schedule.paid_at:
         raise ValueError("Installment already paid")
     account = schedule.application.disbursed_account
@@ -135,7 +146,10 @@ def repay_installment(schedule, actor, idempotency_key=None):
         schedule.application.status = "PAID"
         schedule.application.save(update_fields=["status"])
     ledger.record_idempotent(key, "LOAN_REPAYMENT", journal, {"schedule_id": schedule.pk})
-    return schedule
+    # reflect state on the caller's instance (it was re-fetched under lock)
+    original.paid_at = schedule.paid_at
+    original.journal_id = schedule.journal_id
+    return original
 
 
 def add_months(d, n):

@@ -75,10 +75,12 @@ def purchase(card_id, merchant, amount_raw, online=False, international=False, a
     if amount <= 0:
         raise CardDeclined("INVALID_AMOUNT")
     key = f"card-purchase:{idempotency_key}" if idempotency_key else None
+    card = Card.objects.select_for_update().select_related("account__ledger_account").get(pk=card_id)
+    # idempotency replay must be checked only AFTER taking the card lock,
+    # so a concurrent retry waits for the first attempt to commit
     existing = ledger.find_idempotent(key)
     if existing:
         return CardTransaction.objects.get(pk=existing.result["tx_id"])
-    card = Card.objects.select_for_update().select_related("account__ledger_account").get(pk=card_id)
 
     def decline(reason):
         CardTransaction.objects.create(
@@ -141,10 +143,10 @@ def purchase(card_id, merchant, amount_raw, online=False, international=False, a
 def pay_statement(actor, card_id, statement_id=None, idempotency_key=None):
     """Pay outstanding credit-card statement from the linked account."""
     key = f"stmt-pay:{idempotency_key}" if idempotency_key else None
+    card = Card.objects.select_for_update().select_related("account__ledger_account").get(pk=card_id)
     existing = ledger.find_idempotent(key)
     if existing:
         return Decimal(str(existing.result["total"]))
-    card = Card.objects.select_for_update().select_related("account__ledger_account").get(pk=card_id)
     _assert_owner(card, actor)
     stmts = CreditStatement.objects.select_for_update().filter(card=card, paid=False).order_by("period_end")
     if statement_id:
