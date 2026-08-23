@@ -50,6 +50,36 @@ def daily_outflow_total(source_account, now=None):
     )
 
 
+def _risk_evaluation(actor, source, amount, destination, beneficiary, idempotency_key):
+    """Shadow observation: run the fraud engine on every transfer attempt.
+
+    In SHADOW mode this never interferes with the banking flow; the stored
+    evaluation is correlated with the transfer idempotency key for later
+    backtesting. Engine errors are audited and non-fatal here (fail-safe
+    policy per operation is defined in the enforcement task).
+    """
+    from apps.fraud.context import RiskContext
+    from apps.fraud.engine import evaluate_operation
+
+    ctx = RiskContext(
+        operation_type="TRANSFER",
+        actor=actor,
+        customer=source.customer,
+        amount=amount,
+        currency=source.currency,
+        account_ref=str(source.pk),
+        beneficiary_id=beneficiary.pk if beneficiary else None,
+        idempotency_key=idempotency_key,
+    )
+    try:
+        return evaluate_operation(ctx, source_account=source, user=actor)
+    except Exception as exc:  # shadow: observation must never block money movement
+        from apps.audit.services import record as audit
+
+        audit(actor=actor, action="RISK_EVALUATION_ERROR", metadata={"error": str(exc)[:200]})
+        return None
+
+
 @transaction.atomic
 def execute_transfer(*, actor, source_account_id, amount, destination_account_id=None,
                      beneficiary_id=None, description="", idempotency_key=None,
@@ -108,6 +138,7 @@ def execute_transfer(*, actor, source_account_id, amount, destination_account_id
         raise TransferError("INSUFFICIENT_FUNDS", "Insufficient available funds")
 
     # fraud rules may route to review / block
+    _risk_evaluation(actor, source, amount, destination, beneficiary, key)
     verdict = evaluate_fraud(actor=actor, source=source, amount=amount, destination=destination, beneficiary=beneficiary)
     if verdict.blocked:
         t = Transfer.objects.create(
