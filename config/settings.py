@@ -33,6 +33,7 @@ LOCAL_APPS = [
     "apps.lending",
     "apps.investments",
     "apps.compliance",
+    "apps.fraud",
     "apps.notifications",
     "apps.support",
     "apps.audit",
