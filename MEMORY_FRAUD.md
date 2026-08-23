@@ -12,7 +12,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 03 | RiskContext | feat/fraud-03-context | DONE | PASS | SIM (8767e98) |
 | 04 | Signal registry | feat/fraud-04-signals | DONE | PASS | SIM (a052db6) |
 | 05 | Velocity signals | feat/fraud-05-velocity | DONE | PASS | SIM (cf91cdd) |
-| 06 | Rule engine | feat/fraud-06-rule-engine | pending | | |
+| 06 | Rule engine | feat/fraud-06-rule-engine | DONE | PASS | SIM (7f408e8) |
 | 07 | Rule versioning | feat/fraud-07-rule-versioning | pending | | |
 | 08 | Score engine | feat/fraud-08-score-engine | pending | | |
 | 09 | Policy engine | feat/fraud-09-policy-engine | pending | | |
