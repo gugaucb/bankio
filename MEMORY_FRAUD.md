@@ -7,7 +7,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 
 | # | Task | Branch | Status | Judge | Merged |
 |---|------|--------|--------|-------|--------|
-| 01 | Discovery: mapa de superfície de risco | feat/fraud-01-discovery | DONE | PASS | pending |
+| 01 | Discovery: mapa de superfície de risco | (direto no main) | DONE | PASS | SIM (1524c27) |
 | 02 | Modelos de domínio fraud | feat/fraud-02-domain-model | pending | | |
 | 03 | RiskContext | feat/fraud-03-context | pending | | |
 | 04 | Signal registry | feat/fraud-04-signals | pending | | |
@@ -71,3 +71,4 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 - Achado: apps/compliance já tem evaluate_fraud (só transfers, NEW_DEVICE_HIGH_VALUE é stub) → D-F03: novo apps/fraud absorve e substitui na Task 12.
 - Gaps: cards/payments/loans/login sem risco; sem audit em loans/payments; sem labels históricos (backtest = distribuição, não precision/recall).
 - D-F04: mudança de email/telefone não existe no app → signals PHONE/EMAIL_CHANGED ficarão N/A até endpoints existirem (documentado, não fabricado).
+- D-F05: EXCEÇÃO ao protocolo — commit 1524c27 foi direto ao main por erro de fluxo (branch não criada); conteúdo era só documentação. A partir da Task 02 branches obrigatórias.
