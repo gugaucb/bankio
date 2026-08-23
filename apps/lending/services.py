@@ -73,6 +73,9 @@ def approve(application, manager):
 
 @transaction.atomic
 def disburse(application):
+    existing = ledger.find_idempotent(f"loan-disburse:{application.pk}")
+    if existing:
+        return LoanApplication.objects.get(pk=existing.result["application_id"])
     account = application.disbursed_account
     if account.status != AccountStatus.ACTIVE:
         raise ValueError("Disbursement account not active")
@@ -96,11 +99,19 @@ def disburse(application):
             application=application, installment_no=i,
             due_date=add_months(date.today(), i), amount=pmt,
         )
+    ledger.record_idempotent(
+        f"loan-disburse:{application.pk}", "LOAN_DISBURSEMENT", journal,
+        {"application_id": application.pk},
+    )
     return application
 
 
 @transaction.atomic
-def repay_installment(schedule, actor):
+def repay_installment(schedule, actor, idempotency_key=None):
+    key = f"loan-repay:{idempotency_key}" if idempotency_key else f"loan-repay:{schedule.pk}"
+    existing = ledger.find_idempotent(key)
+    if existing:
+        return RepaymentSchedule.objects.get(pk=existing.result["schedule_id"])
     if schedule.paid_at:
         raise ValueError("Installment already paid")
     account = schedule.application.disbursed_account
@@ -123,6 +134,7 @@ def repay_installment(schedule, actor):
     if not schedule.application.schedule.filter(paid_at__isnull=True).exists():
         schedule.application.status = "PAID"
         schedule.application.save(update_fields=["status"])
+    ledger.record_idempotent(key, "LOAN_REPAYMENT", journal, {"schedule_id": schedule.pk})
     return schedule
 
 

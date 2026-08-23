@@ -69,11 +69,15 @@ def report_lost_or_stolen(actor, card_id, stolen=False):
 
 
 @transaction.atomic
-def purchase(card_id, merchant, amount_raw, online=False, international=False, atm=False):
+def purchase(card_id, merchant, amount_raw, online=False, international=False, atm=False, idempotency_key=None):
     """Simulated acquirer request. Declines enforce card state and limits; posts ledger."""
     amount = Decimal(str(amount_raw)).quantize(Decimal("0.01"))
     if amount <= 0:
         raise CardDeclined("INVALID_AMOUNT")
+    key = f"card-purchase:{idempotency_key}" if idempotency_key else None
+    existing = ledger.find_idempotent(key)
+    if existing:
+        return CardTransaction.objects.get(pk=existing.result["tx_id"])
     card = Card.objects.select_for_update().select_related("account__ledger_account").get(pk=card_id)
 
     def decline(reason):
@@ -129,12 +133,17 @@ def purchase(card_id, merchant, amount_raw, online=False, international=False, a
         card=card, merchant=merchant, amount=amount,
         international=international, online=online, journal=journal,
     )
+    ledger.record_idempotent(key, "CARD_PURCHASE", journal, {"tx_id": tx.pk})
     return tx
 
 
 @transaction.atomic
-def pay_statement(actor, card_id, statement_id=None):
+def pay_statement(actor, card_id, statement_id=None, idempotency_key=None):
     """Pay outstanding credit-card statement from the linked account."""
+    key = f"stmt-pay:{idempotency_key}" if idempotency_key else None
+    existing = ledger.find_idempotent(key)
+    if existing:
+        return Decimal(str(existing.result["total"]))
     card = Card.objects.select_for_update().select_related("account__ledger_account").get(pk=card_id)
     _assert_owner(card, actor)
     stmts = CreditStatement.objects.select_for_update().filter(card=card, paid=False).order_by("period_end")
@@ -157,6 +166,7 @@ def pay_statement(actor, card_id, statement_id=None):
     )
     now = timezone.now()
     stmts.update(paid=True, paid_at=now)
+    ledger.record_idempotent(key, "CARD_STATEMENT_PAYMENT", journal, {"total": str(total)})
     audit(actor=actor, action="CARD_STATEMENT_PAID", resource=card, metadata={"amount": str(total), "journal": journal.reference})
     return total
 

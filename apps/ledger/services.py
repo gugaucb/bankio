@@ -5,7 +5,23 @@ from django.db import transaction
 from django.db.models import Q, Sum
 from django.utils import timezone
 
-from .models import JournalEntry, LedgerAccount, LedgerEntry
+from .models import JournalEntry, LedgerAccount, LedgerEntry, LedgerIdempotencyRecord
+
+
+def find_idempotent(key):
+    """Return the existing idempotency record for key, or None."""
+    if not key:
+        return None
+    return LedgerIdempotencyRecord.objects.filter(key=key).first()
+
+
+def record_idempotent(key, operation, journal, result):
+    """Persist an idempotency marker inside the caller's posting transaction."""
+    if not key:
+        return
+    LedgerIdempotencyRecord.objects.create(
+        key=key, operation=operation, journal=journal, result=result
+    )
 
 
 def get_or_create_account(code, name, type="LIABILITY", currency="USD", is_customer=False):

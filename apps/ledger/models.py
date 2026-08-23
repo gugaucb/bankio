@@ -90,6 +90,22 @@ class JournalEntry(models.Model):
         ]
 
 
+class LedgerIdempotencyRecord(models.Model):
+    """Marks a financial operation as already executed.
+
+    A unique key maps to the journal it produced. Callers must check this
+    BEFORE posting and write it in the SAME transaction as the posting,
+    so retries - sequential or serialized by row locks - see exactly one
+    financial movement per key.
+    """
+
+    key = models.CharField(max_length=160, unique=True)
+    operation = models.CharField(max_length=64)
+    journal = models.ForeignKey(JournalEntry, null=True, blank=True, on_delete=models.PROTECT, related_name="idempotency_records")
+    result = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class LedgerEntry(models.Model):
     journal = models.ForeignKey(JournalEntry, on_delete=models.PROTECT, related_name="entries")
     account = models.ForeignKey(LedgerAccount, on_delete=models.PROTECT, related_name="entries")
