@@ -16,6 +16,23 @@ class LedgerAccount(models.Model):
     currency = models.CharField(max_length=3, default="USD")
     is_customer_account = models.BooleanField(default=False)
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(status__in=["ACTIVE", "BLOCKED", "CLOSED"]),
+                name="ledgeraccount_status_valid",
+            ),
+        ]
+
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE"
+        BLOCKED = "BLOCKED"
+        CLOSED = "CLOSED"
+
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.ACTIVE
+    )
+
     def __str__(self):
         return f"{self.code} {self.name}"
 
@@ -33,6 +50,7 @@ class JournalEntry(models.Model):
     reference = models.CharField(max_length=64, unique=True)
     description = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default="DRAFT")
+    currency = models.CharField(max_length=3, default="USD")
     posted_at = models.DateTimeField(null=True, blank=True)
     reverses = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="reversed_by")
 
