@@ -21,7 +21,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 12 | Transfer integration (shadow) | (direto no main) | DONE | PASS | SIM (f553fa8) |
 | 13 | Step-up auth (challenge/MFA) | feat/fraud-13-step-up | DONE | PASS | SIM |
 | 14 | Fraud alerts | feat/fraud-14-alerts | DONE | PASS | SIM |
-| 15 | Fraud cases | feat/fraud-15-cases | pending | | |
+| 15 | Fraud cases | feat/fraud-15-cases | DONE | PASS | SIM |
 | 16 | Fraud RBAC | feat/fraud-16-rbac | pending | | |
 | 17 | Analyst portal | feat/fraud-17-console | pending | | |
 | 18 | Rule lifecycle management | feat/fraud-18-rule-mgmt | pending | | |
