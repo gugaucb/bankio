@@ -33,11 +33,11 @@ Master plan: immutable double-entry ledger → invariants → reversals/idempote
 | 18 | Legacy migration | — | SKIP per D002: no legacy balance columns; balances always ledger-derived. No fabricated history needed. | N/A | — |
 | 19 | Dual-run transition | — | SKIP: nothing to dual-run; system was born ledger-backed. | N/A | — |
 | 20 | Admin read-only protection | — | DONE within task 06 (admin read-only + tests). | PASS | main |
-| 21 | Audit events for ledger/proof lifecycle | feat/ledger-21-audit | TODO | — | — |
-| 22 | Adversarial testing | test/ledger-22-adversarial | TODO | — | — |
-| 23 | Performance testing | test/ledger-23-performance | TODO | — | — |
-| 24 | Recovery testing | test/ledger-24-recovery | TODO | — | — |
-| 25 | Final regression + Judge | — | TODO | — | — |
+| 21 | Audit events for ledger/proof lifecycle | feat/ledger-21-audit | DONE | PASS | main |
+| 22 | Adversarial testing | test/ledger-22-adversarial | DONE | PASS | main |
+| 23 | Performance testing | test/ledger-23-performance | DONE | PASS | main |
+| 24 | Recovery testing | test/ledger-24-recovery | DONE | PASS | main |
+| 25 | Final regression + Judge | — | DONE | PASS | — |
 
 Tags planned: `bankio-ledger-core-v1`, `bankio-ledger-reconciled-v1`, `bankio-ledger-proof-v1`, `bankio-ledger-anchored-v1`.
 
@@ -98,3 +98,28 @@ Money Mutation Map (all via ledger journals):
 Audit: `AuditLog` immutable model exists; no ledger/proof lifecycle events yet.
 
 Risks: no DB-level balanced-journal constraint; immutability enforced only via save() overrides (bypassable via queryset update/raw SQL); blocked_amount non-ledger; no crypto layer at all.
+
+
+## Final Acceptance (2026-08-23) — JUDGE: ACCEPTED
+
+All critical gates PASS; full stable suite `check + makemigrations --check + pytest` = **217 passed**.
+
+| Gate | Result |
+|---|---|
+| LEDGER MODEL / DOUBLE ENTRY / ATOMIC POSTING | PASS |
+| BALANCE PROJECTION / DIRECT MUTATION REMOVED | PASS |
+| IMMUTABILITY / REVERSALS | PASS |
+| IDEMPOTENCY / CONCURRENCY | PASS |
+| RECONCILIATION | PASS |
+| LEGACY MIGRATION | SKIP (D002: born ledger-backed) |
+| HASH CANONICALIZATION / HASH CHAIN | PASS |
+| DIGITAL SIGNATURE / MERKLE TREE / MERKLE PROOFS / BATCH CHAIN | PASS |
+| BLOCKCHAIN ANCHOR / ANCHOR VERIFICATION | PASS |
+| PRIVACY / AUDITABILITY / RECOVERY / SECURITY | PASS |
+| BANKIO REGRESSION / POST-MERGE VERIFICATION | PASS |
+| OPEN CRITICAL BUGS | 0 |
+| UNEXPLAINED RECONCILIATION DIFFERENCES | 0 |
+
+Tags: bankio-baseline-v0, bankio-ledger-core-v1, bankio-ledger-reconciled-v1, bankio-ledger-proof-v1, bankio-ledger-anchored-v1.
+
+Out of scope (per master spec): Bitcoin Account. Future work: real external anchor adapter (interface ready), auditor portal UI for proofs.
