@@ -87,7 +87,7 @@ def _manifest_digest(manifest: dict) -> str:
 def generate_merkle_proof(journal: JournalEntry):
     """Inclusion proof for one journal against its sealed batch."""
     batch = (
-        LedgerProofBatch.objects.filter(status="SEALED")
+        LedgerProofBatch.objects.exclude(status=LedgerProofBatch.Status.FAILED)
         .filter(first_journal_id__lte=journal.id, last_journal_id__gte=journal.id)
         .first()
     )
