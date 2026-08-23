@@ -16,7 +16,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 07 | Rule versioning | feat/fraud-07-rule-versioning | DONE | PASS | SIM (f83cb8f) |
 | 08 | Score engine | feat/fraud-08-score-engine | DONE | PASS | SIM (12e329f) |
 | 09 | Policy engine | feat/fraud-09-policy-engine | DONE | PASS | SIM |
-| 10 | Decision snapshot | feat/fraud-10-snapshot | pending | | |
+| 10 | Decision snapshot | feat/fraud-10-snapshot | DONE | PASS | SIM |
 | 11 | Shadow mode + engine modes | feat/fraud-11-shadow-mode | pending | | |
 | 12 | Transfer integration (shadow) | feat/fraud-12-transfer | pending | | |
 | 13 | Step-up auth (challenge/MFA) | feat/fraud-13-step-up | pending | | |
