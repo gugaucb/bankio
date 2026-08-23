@@ -9,7 +9,6 @@ from django.utils import timezone
 
 from apps.accounts.models import Account, AccountStatus
 from apps.audit.services import record as audit
-from apps.compliance.services import evaluate_fraud
 from apps.ledger import services as ledger
 
 from .models import Transfer, TransferStatus
@@ -51,21 +50,25 @@ def daily_outflow_total(source_account, now=None):
 
 
 def _risk_evaluation(actor, source, amount, destination, beneficiary, idempotency_key):
-    """Shadow observation: run the fraud engine on every transfer attempt.
+    """Run the fraud engine on every transfer attempt.
 
-    In SHADOW mode this never interferes with the banking flow; the stored
-    evaluation is correlated with the transfer idempotency key for later
-    backtesting. Engine errors are audited and non-fatal here (fail-safe
-    policy per operation is defined in the enforcement task).
+    The stored evaluation is correlated with the transfer idempotency key.
+    Engine errors are audited and non-fatal (fail-open per failsafe-v1);
+    the returned evaluation drives _risk_gate below.
     """
     from apps.fraud.context import RiskContext
     from apps.fraud.engine import evaluate_operation
+
+    try:  # raw input may not be numeric yet; validation owns that error
+        safe_amount = Decimal(str(amount)) if not isinstance(amount, Decimal) else amount
+    except (InvalidOperation, ValueError):
+        safe_amount = None
 
     ctx = RiskContext(
         operation_type="TRANSFER",
         actor=actor,
         customer=source.customer,
-        amount=amount,
+        amount=safe_amount,
         currency=source.currency,
         account_ref=str(source.pk),
         beneficiary_id=beneficiary.pk if beneficiary else None,
@@ -73,17 +76,112 @@ def _risk_evaluation(actor, source, amount, destination, beneficiary, idempotenc
     )
     try:
         return evaluate_operation(ctx, source_account=source, user=actor)
-    except Exception as exc:  # shadow: observation must never block money movement
+    except Exception as exc:  # fail-open with full evidence (INV 9)
         from apps.audit.services import record as audit
 
         audit(actor=actor, action="RISK_EVALUATION_ERROR", metadata={"error": str(exc)[:200]})
         return None
 
 
-@transaction.atomic
+def _risk_gate(actor, source, amount, destination, beneficiary, key,
+               scheduled_for=None, recurrence=""):
+    """Limited-enforcement gate (spec PART 37): the engine decision now acts.
+
+    Returns "ALLOW" or "REVIEW". Raises:
+      STEP_UP_REQUIRED — effective CHALLENGE; a bound step-up challenge was issued.
+      RISK_BLOCKED     — ENFORCEMENT BLOCK; a FAILED transfer row is recorded.
+    SHADOW mode never interferes (effective_decision maps everything to ALLOW).
+    Engine failure is fail-open with an audited trail.
+    """
+    from apps.fraud import modes
+
+    ev = _risk_evaluation(actor, source, amount, destination, beneficiary, key)
+    if ev is None:
+        return "ALLOW"
+    effective = modes.effective_decision(ev)
+
+    if effective == "CHALLENGE":
+        from apps.fraud.challenge import issue_challenge
+
+        facts = {"amount": str(amount), "beneficiary": str(beneficiary.pk if beneficiary else ""),
+                 "idempotency_key": key}
+        ch, _code = issue_challenge(ev, source.customer, facts)
+        raise TransferError("STEP_UP_REQUIRED",
+                            f"Step-up verification required (challenge {ch.pk})")
+
+    raw = ev.decision
+    enforcing = ev.engine_mode == "ENFORCEMENT"
+    if raw == "BLOCK" and enforcing:
+        t = Transfer.objects.create(
+            reference=f"TRF-{uuid.uuid4().hex[:12].upper()}",
+            idempotency_key=key,
+            source_account=source,
+            destination_account=destination,
+            beneficiary=beneficiary,
+            amount=amount,
+            currency=source.currency,
+            status=TransferStatus.FAILED,
+            failure_reason=f"RISK_BLOCKED: {ev.triggered_rules}",
+            created_by=actor,
+            scheduled_for=scheduled_for,
+            recurrence=recurrence,
+        )
+        from apps.audit.services import record as audit
+
+        audit(actor=actor, action="TRANSFER_FAILED", resource=t,
+              metadata={"reason": "RISK_BLOCKED", "ruleset_version": ev.ruleset_version})
+        raise TransferError("RISK_BLOCKED", "Transfer blocked by risk policy")
+    return "REVIEW" if (raw == "REVIEW" and enforcing) else "ALLOW"
+
+
+def _post_gate_review_flag(source, key):
+    """The pre-transaction gate already persisted the evaluation; look up
+    whether it routed this operation to REVIEW."""
+    from apps.fraud.models import RiskEvaluation
+
+    ev = RiskEvaluation.objects.filter(idempotency_key=key).order_by("-pk").first()
+    if ev is None:
+        return False
+    return (
+        ev.engine_mode == "ENFORCEMENT"
+        and ev.decision == RiskEvaluation.Decision.REVIEW
+    )
+
+
 def execute_transfer(*, actor, source_account_id, amount, destination_account_id=None,
                      beneficiary_id=None, description="", idempotency_key=None,
                      scheduled_for=None, recurrence=""):
+    """Public entry: the risk gate runs OUTSIDE the settlement transaction so
+    that block/challenge evidence survives an aborted transfer (INV 9/10)."""
+    from apps.accounts.models import Account
+
+    source = Account.objects.select_related("customer").get(pk=source_account_id)
+    beneficiary = None
+    if beneficiary_id:
+        from apps.accounts.models import Beneficiary
+
+        beneficiary = Beneficiary.objects.filter(pk=beneficiary_id).first()
+    destination = (
+        Account.objects.get(pk=destination_account_id) if destination_account_id else None
+    )
+    key = idempotency_key or str(uuid.uuid4())
+    existing = Transfer.objects.filter(idempotency_key=key).first()
+    if existing:
+        return existing, False  # replays never re-enter the risk gate
+    _risk_gate(actor, source, amount, destination, beneficiary, key,
+               scheduled_for=scheduled_for, recurrence=recurrence)
+    return _execute_transfer_atomic(
+        actor=actor, source_account_id=source_account_id, amount=amount,
+        destination_account_id=destination_account_id, beneficiary_id=beneficiary_id,
+        description=description, idempotency_key=key,
+        scheduled_for=scheduled_for, recurrence=recurrence,
+    )
+
+
+@transaction.atomic
+def _execute_transfer_atomic(*, actor, source_account_id, amount, destination_account_id=None,
+                             beneficiary_id=None, description="", idempotency_key=None,
+                             scheduled_for=None, recurrence=""):
     """
     Execute an internal or external transfer atomically.
 
@@ -137,30 +235,12 @@ def execute_transfer(*, actor, source_account_id, amount, destination_account_id
     if available < amount:
         raise TransferError("INSUFFICIENT_FUNDS", "Insufficient available funds")
 
-    # fraud rules may route to review / block
-    _risk_evaluation(actor, source, amount, destination, beneficiary, key)
-    verdict = evaluate_fraud(actor=actor, source=source, amount=amount, destination=destination, beneficiary=beneficiary)
-    if verdict.blocked:
-        t = Transfer.objects.create(
-            reference=f"TRF-{uuid.uuid4().hex[:12].upper()}",
-            idempotency_key=key,
-            source_account=source,
-            destination_account=destination,
-            beneficiary=beneficiary,
-            amount=amount,
-            currency=source.currency,
-            description=description,
-            status=TransferStatus.FAILED,
-            failure_reason=f"FRAUD_BLOCKED: {verdict.reason}",
-            created_by=actor,
-            scheduled_for=scheduled_for,
-            recurrence=recurrence,
-        )
-        audit(actor=actor, action="TRANSFER_FAILED", resource=t, metadata={"reason": verdict.reason})
-        raise TransferError("FRAUD_BLOCKED", verdict.reason)
+    # fraud gate ran pre-transaction (see execute_transfer); its verdict arrives
+    # via the idempotency-key-scoped evaluation — REVIEW routing only:
+    risk_review = _post_gate_review_flag(source, key)
 
     status = TransferStatus.PENDING if scheduled_for else TransferStatus.CREATED
-    if verdict.review:
+    if risk_review:
         status = TransferStatus.UNDER_REVIEW
 
     transfer = Transfer.objects.create(
@@ -178,7 +258,7 @@ def execute_transfer(*, actor, source_account_id, amount, destination_account_id
         recurrence=recurrence,
     )
 
-    if verdict.review:
+    if risk_review:
         audit(actor=actor, action="TRANSFER_CREATED", resource=transfer, metadata={"under_review": True})
         return transfer, True
 
