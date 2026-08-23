@@ -55,7 +55,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 > longer participates in execute_transfer (D-F03 cutover complete);
 > CHALLENGE_ONLY transfers now raise STEP_UP_REQUIRED (Task 35 test
 > expectation updated accordingly).
-| 38 | Medição false positives | test/fraud-38-fp-measure | pending | | |
+| 38 | Medição false positives | test/fraud-38-fp-measure | DONE | PASS | SIM |
 | 39 | Full enforcement | feat/fraud-39-enforcement | pending | | |
 | 40 | Regressão completa Bankio | test/fraud-40-regression | pending | | |
 | 41 | Judge final | — | pending | | |
