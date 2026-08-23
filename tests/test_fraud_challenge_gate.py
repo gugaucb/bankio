@@ -92,9 +92,11 @@ def accounts(db, django_user_model):
 
 
 @pytest.mark.django_db
-def test_transfer_under_challenge_only_completes_with_challenge_evaluation(accounts):
-    """In CHALLENGE_ONLY the flow still settles; the BLOCK recommendation is
-    recorded as a CHALLENGE-grade observation awaiting step-up wiring."""
+def test_transfer_under_challenge_only_requires_step_up(accounts):
+    """Since the enforcement cutover (Task 37), CHALLENGE_ONLY stops the flow
+    with STEP_UP_REQUIRED and a bound challenge — nothing settles."""
+    from apps.transfers.services import TransferError
+
     sender, _, src, dst = accounts
     RiskRule.objects.create(rule_id="CO-BLOCK", name="n", score=100,
                             lifecycle=RiskRule.Lifecycle.ACTIVE, enabled=True)
@@ -108,12 +110,14 @@ def test_transfer_under_challenge_only_completes_with_challenge_evaluation(accou
 
     from apps.transfers import services as transfers
 
-    t, created = transfers.execute_transfer(
-        actor=sender, source_account_id=src.pk,
-        amount=Decimal("10.00"), destination_account_id=dst.pk,
-        idempotency_key=f"CO-{uuid4().hex[:10]}",
-    )
-    assert t.status == "COMPLETED"  # challenge-only never blocks settlement outright
-    ev = RiskEvaluation.objects.filter(operation_type="TRANSFER").latest("pk")
+    key = f"CO-{uuid4().hex[:10]}"
+    with pytest.raises(TransferError) as e:
+        transfers.execute_transfer(
+            actor=sender, source_account_id=src.pk,
+            amount=Decimal("10.00"), destination_account_id=dst.pk,
+            idempotency_key=key,
+        )
+    assert e.value.code == "STEP_UP_REQUIRED"
+    ev = RiskEvaluation.objects.filter(idempotency_key=key).latest("pk")
     assert ev.decision == RiskEvaluation.Decision.BLOCK          # policy verdict preserved
     assert effective_decision(ev) == "CHALLENGE"                 # mode downgrades action
