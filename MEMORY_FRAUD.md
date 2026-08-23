@@ -47,7 +47,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 > test updated to use FRAUD_MANAGER actor (stronger, not weaker).
 | 34 | Shadow backtest run | feat/fraud-34-shadow-backtest | DONE | PASS | SIM |
 | 35 | Challenge-only mode | feat/fraud-35-challenge | DONE | PASS | SIM |
-| 36 | Medição challenge | test/fraud-36-measure | pending | | |
+| 36 | Medição challenge | feat/fraud-36-measure-challenge | DONE | PASS | SIM |
 | 37 | Limited enforcement | feat/fraud-37-limited | pending | | |
 | 38 | Medição false positives | test/fraud-38-fp-measure | pending | | |
 | 39 | Full enforcement | feat/fraud-39-enforcement | pending | | |
