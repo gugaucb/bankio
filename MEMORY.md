@@ -21,8 +21,8 @@ Master plan: immutable double-entry ledger → invariants → reversals/idempote
 | 06 | Immutability & reversals | feat/ledger-06-immutability | DONE | PASS | main |
 | 07 | Idempotency (cards/lending gaps) | feat/ledger-07-idempotency | DONE | PASS | main |
 | 08 | Concurrency (PostgreSQL-proven) | feat/ledger-08-concurrency | DONE | PASS | main |
-| 09 | Reconciliation service + command | feat/ledger-09-reconciliation | TODO | — | — |
-| 10 | Canonical hash + hash chain | feat/ledger-10-canonical-hash | TODO | — | — |
+| 09 | Reconciliation service + command | feat/ledger-09-reconciliation | DONE | PASS | main (tag bankio-ledger-reconciled-v1) |
+| 10 | Canonical hash + hash chain | feat/ledger-10-canonical-hash | DONE | PASS | main |
 | 11 | Digital signature abstraction | feat/ledger-11-signatures | TODO | — | — |
 | 12 | Merkle batches + proofs | feat/ledger-12-merkle | TODO | — | — |
 | 13 | Batch chain | feat/ledger-13-batch-chain | TODO | — | — |
@@ -54,6 +54,11 @@ Tags planned: `bankio-ledger-core-v1`, `bankio-ledger-reconciled-v1`, `bankio-le
   - `Account.blocked_amount` is a stored non-ledger field — candidate for hold-ledger modeling or explicit projection policy.
 
 ## Discovery Summary (Task 01)
+
+### Session log (2026-08-23, cont.)
+- Tag `bankio-ledger-reconciled-v1` after task 09.
+- Task 09: `apps/ledger/reconciliation.py` + `reconcile_ledger` command; attacker-simulation test disables DB triggers to plant an unbalanced POSTED journal -> reconciliation FAILED + audit alert.
+- Task 10: `apps/ledger/canonical.py` (ledger-c14n-v1 / SHA-256 / domain separators); JournalEntry gained payload_hash/previous_entry_hash/chain_hash, written in the SAME update as DRAFT->POSTED (model immutability blocks later writes). `verify_ledger_hash_chain` command detects first tampered position.
 
 ### Session log (2026-08-23)
 - **Tag `bankio-ledger-core-v1` created after task 08** — all core ledger gates pass, 156 tests green on main.
