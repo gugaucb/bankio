@@ -1,0 +1,63 @@
+{% extends "fraud/base.html" %}
+{% block title %}Case {{ case.case_reference }} — Bankio{% endblock %}
+{% block page %}
+<h1 class="text-xl font-bold mb-1">Case {{ case.case_reference }}</h1>
+<p class="text-sm text-gray-400 mb-5">
+  {{ case.get_status_display }} · severity {{ case.severity }} ·
+  analyst {{ case.assigned_analyst.username|default:"unassigned" }} ·
+  opened {{ case.opened_at|date:"d M Y H:i" }}
+</p>
+
+<div class="grid md:grid-cols-2 gap-6 max-w-4xl">
+  <section>
+    <h2 class="text-sm font-semibold uppercase text-gray-400 mb-2">Operation</h2>
+    <div class="card p-4 text-sm space-y-1">
+      {% if evaluation %}
+        <p><span class="text-gray-400">Type:</span> {{ evaluation.operation_type }}</p>
+        <p><span class="text-gray-400">Risk:</span> {{ evaluation.risk_score }} ({{ evaluation.risk_level }})</p>
+        <p><span class="text-gray-400">Decision:</span> {{ evaluation.decision }} <span class="text-gray-300">({{ evaluation.engine_mode }})</span></p>
+        <p class="text-gray-500 text-xs">policy {{ evaluation.policy_version }} · ruleset {{ evaluation.ruleset_version }}</p>
+        {% for r in evaluation.triggered_rules %}
+          <p class="text-xs"><span class="font-mono">{{ r.rule_id }}</span> v{{ r.version }}: +{{ r.score }} pts</p>
+        {% endfor %}
+      {% else %}<p class="text-gray-400">No linked evaluation.</p>{% endif %}
+    </div>
+
+    <h2 class="text-sm font-semibold uppercase text-gray-400 mt-5 mb-2">Alerts ({{ case.alerts.count }})</h2>
+    <div class="card p-4 text-sm space-y-2">
+      {% for a in case.alerts.all %}<p>{{ a.alert_type }} · {{ a.severity }} · {{ a.status }}</p>
+      {% empty %}<p class="text-gray-400">None.</p>{% endfor %}
+    </div>
+
+    <h2 class="text-sm font-semibold uppercase text-gray-400 mt-5 mb-2">Decide</h2>
+    <form method="post" action="{% url 'fraud:decide_case' case.pk %}" class="card p-4 space-y-2"
+          onsubmit="return confirm('Record this decision? It is audited and appended to the timeline.');">
+      {% csrf_token %}
+      <select name="status" class="border rounded-xl px-3 py-1.5 text-sm w-full">
+        <option value="INVESTIGATING">Start investigating</option>
+        <option value="WAITING_CUSTOMER">Waiting customer</option>
+        <option value="ESCALATED">Escalate</option>
+        {% if can_confirm %}<option value="CONFIRMED_FRAUD">Confirm fraud</option>{% endif %}
+        <option value="FALSE_POSITIVE">False positive</option>
+        <option value="CLOSED">Close</option>
+      </select>
+      <textarea name="reason" rows="2" placeholder="Decision reason (required for terminal states)"
+                class="border rounded-xl px-3 py-1.5 text-sm w-full"></textarea>
+      <button class="btn-primary !py-1.5 text-xs">Record decision</button>
+    </form>
+  </section>
+
+  <section>
+    <h2 class="text-sm font-semibold uppercase text-gray-400 mb-2">Case Timeline</h2>
+    <ol class="card p-4 text-sm space-y-2">
+      {% for e in events %}
+        <li class="border-b last:border-0 pb-2 last:pb-0">
+          <p class="font-semibold">{{ e.event_type }}</p>
+          <p class="text-gray-400 text-xs">{{ e.actor.username|default:"system" }} · {{ e.created_at|date:"d M H:i" }}</p>
+        </li>
+      {% empty %}<li class="text-gray-400">No events.</li>
+      {% endfor %}
+    </ol>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "fraud/base.html" %}
+{% block title %}Fraud Overview — Bankio{% endblock %}
+{% block page %}
+<h1 class="text-xl font-bold mb-5">Fraud &amp; Risk Overview</h1>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl">
+  <div class="card p-4"><p class="text-xs text-gray-400 uppercase">Open Alerts</p><p class="text-2xl font-bold">{{ open_alerts }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400 uppercase">Critical Alerts</p><p class="text-2xl font-bold text-rose-600">{{ critical_alerts }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400 uppercase">Cases Open</p><p class="text-2xl font-bold">{{ cases_investigating }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400 uppercase">Evaluations</p><p class="text-2xl font-bold">{{ total_evaluations }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400 uppercase">Blocked</p><p class="text-2xl font-bold text-red-600">{{ blocked }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400 uppercase">Challenged</p><p class="text-2xl font-bold text-amber-600">{{ challenges }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400 uppercase">In Review</p><p class="text-2xl font-bold">{{ reviewed }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400 uppercase">Engine Mode</p><p class="text-lg font-bold">{{ engine_mode }}</p></div>
+</div>
+
+<h2 class="text-sm font-semibold uppercase text-gray-400 mt-8 mb-2">Risk Distribution</h2>
+<div class="flex gap-3 max-w-2xl">
+  {% for level, n in risk_distribution.items %}
+    <div class="card px-4 py-3 text-sm"><span class="font-semibold">{{ level|default:"—" }}</span> · {{ n }}</div>
+  {% empty %}<div class="card p-4 text-sm text-gray-400">No evaluations yet.</div>
+  {% endfor %}
+</div>
+
+<h2 class="text-sm font-semibold uppercase text-gray-400 mt-8 mb-2">Top Triggered Rules</h2>
+<div class="card p-4 max-w-xl text-sm">
+  {% for rule, n in top_rules %}
+    <div class="flex justify-between border-b last:border-0 py-1.5"><span>{{ rule }}</span><span class="font-semibold">{{ n }}</span></div>
+  {% empty %}<p class="text-gray-400">No rule hits yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}
