@@ -23,11 +23,11 @@ Master plan: immutable double-entry ledger → invariants → reversals/idempote
 | 08 | Concurrency (PostgreSQL-proven) | feat/ledger-08-concurrency | DONE | PASS | main |
 | 09 | Reconciliation service + command | feat/ledger-09-reconciliation | DONE | PASS | main (tag bankio-ledger-reconciled-v1) |
 | 10 | Canonical hash + hash chain | feat/ledger-10-canonical-hash | DONE | PASS | main |
-| 11 | Digital signature abstraction | feat/ledger-11-signatures | TODO | — | — |
-| 12 | Merkle batches + proofs | feat/ledger-12-merkle | TODO | — | — |
-| 13 | Batch chain | feat/ledger-13-batch-chain | TODO | — | — |
-| 14 | Anchor provider interface | feat/ledger-14-anchor-provider | TODO | — | — |
-| 15 | Simulated anchor provider | feat/ledger-15-simulated-anchor | TODO | — | — |
+| 11 | Digital signature abstraction | feat/ledger-11-signatures | DONE | PASS | main |
+| 12 | Merkle batches + proofs | feat/ledger-12-merkle | DONE | PASS | main |
+| 13 | Batch chain | feat/ledger-13-batch-chain | DONE | PASS | main |
+| 14 | Anchor provider interface | feat/ledger-14-anchor-provider | DONE | PASS | main |
+| 15 | Simulated anchor provider | feat/ledger-15-simulated-anchor | DONE | PASS | main |
 | 16 | External anchor adapter + async command | feat/ledger-16-external-anchor | TODO | — | — |
 | 17 | Proof verification (auditor) | feat/ledger-17-proof-verification | TODO | — | — |
 | 18 | Legacy migration (N/A likely — see discovery) | feat/ledger-18-legacy-migration | TBD | — | — |
@@ -54,6 +54,12 @@ Tags planned: `bankio-ledger-core-v1`, `bankio-ledger-reconciled-v1`, `bankio-le
   - `Account.blocked_amount` is a stored non-ledger field — candidate for hold-ledger modeling or explicit projection policy.
 
 ## Discovery Summary (Task 01)
+
+### Session log (2026-08-23, cont. 2)
+- Task 11: added `cryptography==44.0.1` to requirements (docker rebuild). `apps/ledger/signing.py` — DevEd25519Signer, single key boundary, swap point for KMS/HSM.
+- Task 12: `apps/ledger/merkle.py` (merkle-v1, duplicate-last for odd counts) + `LedgerProofBatch` (contiguous id-range membership, signed manifests). Lessons: capture `now` once for manifest/stored sealed_at; batch seals ALL unsealed contiguous journals.
+- Task 13: `verify_batch_chain` command — sequence continuity, previous_batch_hash linkage, signature validation.
+- Task 14/15: `apps/ledger/anchors.py` (commitment = hash of {system, proof_version, batch_sequence, merkle_root, manifest_hash} — PII-free, tested) + `anchor_service.py` (SimulatedBlockchainAnchorProvider, LedgerAnchor state machine, FAILED->SUPERSEDED retry semantics). `anchor_ledger_batches` command.
 
 ### Session log (2026-08-23, cont.)
 - Tag `bankio-ledger-reconciled-v1` after task 09.
