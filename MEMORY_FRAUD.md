@@ -57,7 +57,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 > expectation updated accordingly).
 | 38 | Medição false positives | test/fraud-38-fp-measure | DONE | PASS | SIM |
 | 39 | Full enforcement | feat/fraud-39-enforcement | DONE | PASS | SIM |
-| 40 | Regressão completa Bankio | test/fraud-40-regression | pending | | |
+| 40 | Regressão completa Bankio | test/fraud-40-regression | DONE | PASS | SIM |
 | 41 | Judge final | — | pending | | |
 
 ## Tags alvo
