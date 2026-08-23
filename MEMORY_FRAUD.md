@@ -11,7 +11,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 02 | Modelos de domínio fraud | feat/fraud-02-domain-model | DONE | PASS | SIM (merge ad6281f) |
 | 03 | RiskContext | feat/fraud-03-context | DONE | PASS | SIM (8767e98) |
 | 04 | Signal registry | feat/fraud-04-signals | DONE | PASS | SIM (a052db6) |
-| 05 | Velocity signals | feat/fraud-05-velocity | pending | | |
+| 05 | Velocity signals | feat/fraud-05-velocity | DONE | PASS | SIM (cf91cdd) |
 | 06 | Rule engine | feat/fraud-06-rule-engine | pending | | |
 | 07 | Rule versioning | feat/fraud-07-rule-versioning | pending | | |
 | 08 | Score engine | feat/fraud-08-score-engine | pending | | |
