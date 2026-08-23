@@ -253,3 +253,50 @@ class FraudCase(models.Model):
 
     def __str__(self):
         return f"CASE-{self.case_reference} [{self.status}]"
+
+
+class FraudCaseEvent(models.Model):
+    """Append-only case timeline. Events are never updated or deleted."""
+
+    case = models.ForeignKey(FraudCase, on_delete=models.CASCADE, related_name="events")
+    event_type = models.CharField(max_length=64)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+    detail = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise ValueError("Case events are append-only.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Case events are append-only.")
+
+    def __str__(self):
+        return f"{self.case_id}:{self.event_type}"
+
+
+# Legal case state transitions (spec PART 12 / §45).
+CASE_TRANSITIONS = {
+    FraudCase.Status.OPEN: {FraudCase.Status.INVESTIGATING, FraudCase.Status.CLOSED},
+    FraudCase.Status.INVESTIGATING: {
+        FraudCase.Status.WAITING_CUSTOMER, FraudCase.Status.ESCALATED,
+        FraudCase.Status.CONFIRMED_FRAUD, FraudCase.Status.FALSE_POSITIVE,
+        FraudCase.Status.CLOSED,
+    },
+    FraudCase.Status.WAITING_CUSTOMER: {FraudCase.Status.INVESTIGATING},
+    FraudCase.Status.ESCALATED: {FraudCase.Status.INVESTIGATING, FraudCase.Status.CONFIRMED_FRAUD},
+    # terminal states
+    FraudCase.Status.CONFIRMED_FRAUD: set(),
+    FraudCase.Status.FALSE_POSITIVE: set(),
+    FraudCase.Status.CLOSED: set(),
+}
+
+
+class CaseTransitionError(ValueError):
+    pass
