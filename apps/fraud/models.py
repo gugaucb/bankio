@@ -134,6 +134,12 @@ class RiskRule(models.Model):
 
     effective_from = models.DateTimeField(null=True, blank=True)
     effective_until = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
