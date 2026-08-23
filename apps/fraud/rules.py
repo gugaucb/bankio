@@ -74,7 +74,8 @@ def evaluate_rules(operation_type, signal_values, now=None):
     for rule in eligible_rules(operation_type, now):
         active_ids.append(f"{rule.rule_id}:{rule.version}")
         conditions = rule.conditions if isinstance(rule.conditions, list) else [rule.conditions]
-        met = all(_condition_met(c, signal_values) for c in conditions)
+        conditions = [c for c in conditions if c]  # ignore empty condition dicts
+        met = all(_condition_met(c, signal_values) for c in conditions)  # no conditions == always
         key = (rule.rule_id, rule.version)
         if met and key not in seen_pairs:
             seen_pairs.add(key)
