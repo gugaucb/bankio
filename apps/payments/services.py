@@ -14,13 +14,30 @@ class PaymentError(Exception):
     pass
 
 
-@transaction.atomic
 def pay_bill(*, actor, account_id, bill_id, idempotency_key=None):
+    """Public entry: the risk gate runs OUTSIDE the settlement transaction so
+    the evaluation snapshot survives an aborted payment (INV 9)."""
+    from apps.fraud.gate import RiskGateIntervention, enforce
+
     key = idempotency_key or str(uuid.uuid4())
     existing = Payment.objects.filter(idempotency_key=key).first()
     if existing:
         return existing, False
 
+    account = Account.objects.select_related("customer").get(pk=account_id)
+    bill = Bill.objects.get(pk=bill_id)
+    ev = _payment_risk_observation(actor, account, bill.amount, bill, key)
+    try:
+        enforce(ev)
+    except RiskGateIntervention as g:
+        raise PaymentError(g.action)
+
+    return _pay_bill_atomic(actor=actor, account_id=account_id, bill_id=bill_id,
+                            idempotency_key=key)
+
+
+@transaction.atomic
+def _pay_bill_atomic(*, actor, account_id, bill_id, idempotency_key):
     account = Account.objects.select_for_update().get(pk=account_id)
     if actor.is_customer and account.customer_id != actor.id:
         raise PaymentError("FORBIDDEN")
@@ -34,10 +51,6 @@ def pay_bill(*, actor, account_id, bill_id, idempotency_key=None):
     if bill.payments.filter(status="COMPLETED").exists():
         raise PaymentError("BILL_ALREADY_PAID")
 
-    # shadow risk observation before irreversible settlement (spec PART 26);
-    # non-fatal in SHADOW — enforcement wiring comes with the cutover task
-    _payment_risk_observation(actor, account, amount, bill, key)
-
     bank_income = ledger.get_or_create_account("4000-PAYMENT-INCOME", "Payment Settlement Clearing", type="ASSET")
     journal = ledger.post_journal(
         reference=f"PAY-{uuid.uuid4().hex[:12].upper()}",
@@ -46,7 +59,7 @@ def pay_bill(*, actor, account_id, bill_id, idempotency_key=None):
     )
     payment = Payment.objects.create(
         account=account, bill=bill, amount=amount,
-        idempotency_key=key, journal=journal, created_by=actor,
+        idempotency_key=idempotency_key, journal=journal, created_by=actor,
     )
     return payment, True
 
