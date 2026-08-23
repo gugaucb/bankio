@@ -36,7 +36,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 27 | Sensitive profile changes | feat/fraud-27-profile | DONE | PASS | SIM |
 | 28 | Account opening | feat/fraud-28-opening | DONE | PASS | SIM |
 | 29 | Manager operations | feat/fraud-29-manager | DONE | PASS | SIM |
-| 30 | Insider risk | feat/fraud-30-insider | pending | | |
+| 30 | Insider risk | feat/fraud-30-insider | DONE | PASS | SIM |
 | 31 | Fail-safe policies | feat/fraud-31-failsafe | pending | | |
 | 32 | Observability | feat/fraud-32-observability | pending | | |
 | 33 | Adversarial suite | test/fraud-33-adversarial | pending | | |
