@@ -81,9 +81,23 @@ def post_journal(reference, description, lines, posted_at=None, currency=None):
             credits += amount
     if debits != credits or debits == 0:
         raise ValueError(f"Unbalanced journal {reference}: debits={debits} credits={credits}")
+
+    # hash chain: computed BEFORE the DRAFT->POSTED update so all proof
+    # fields land in the same atomic write that makes the journal immutable
+    from . import canonical
+
     journal.status = JournalEntry.Status.POSTED
     journal.posted_at = posted_at or timezone.now()
-    journal.save(update_fields=["status", "posted_at"])
+    prev = (
+        JournalEntry.objects.exclude(chain_hash__isnull=True)
+        .order_by("-id").values_list("chain_hash", flat=True).first()
+    )
+    journal.previous_entry_hash = prev or canonical.GENESIS_HASH
+    journal.payload_hash = canonical.payload_hash(journal)
+    journal.chain_hash = canonical.chain_hash(journal.previous_entry_hash, journal.payload_hash)
+    journal.save(update_fields=[
+        "status", "posted_at", "payload_hash", "previous_entry_hash", "chain_hash",
+    ])
     return journal
 
 
