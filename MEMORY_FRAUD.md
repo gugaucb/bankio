@@ -18,7 +18,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 09 | Policy engine | feat/fraud-09-policy-engine | DONE | PASS | SIM |
 | 10 | Decision snapshot | feat/fraud-10-snapshot | DONE | PASS | SIM |
 | 11 | Shadow mode + engine modes | feat/fraud-11-shadow-mode | DONE | PASS | SIM |
-| 12 | Transfer integration (shadow) | feat/fraud-12-transfer | pending | | |
+| 12 | Transfer integration (shadow) | (direto no main) | DONE | PASS | SIM (f553fa8) |
 | 13 | Step-up auth (challenge/MFA) | feat/fraud-13-step-up | pending | | |
 | 14 | Fraud alerts | feat/fraud-14-alerts | pending | | |
 | 15 | Fraud cases | feat/fraud-15-cases | pending | | |
@@ -61,7 +61,8 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 ## Decision Log
 - D-F01: Fase usa arquivo separado `MEMORY_FRAUD.md` (MEMORY.md permanece como registro da Fase 1 ledger).
 - D-F02: mapa de superfície em docs/fraud/risk-surface-map.md (versionado).
-- D-F03: apps/fraud novo domínio; evaluate_fraud do compliance será desativado após integração de transfers.
+- D-F03 (revisado Task 12): evaluate_fraud legado ativo até cutover de enforcement (Tasks 37–39); novo engine roda em shadow ao lado.
+- D-F06: EXCEÇÃO — commit da Task 12 foi direto ao main (falha de fluxo de branch); conteúdo íntegro, 282 testes verdes.
 - D-F04: signals de mudança de contato marcados N/A (endpoints inexistentes).
 
 ## Sessões
