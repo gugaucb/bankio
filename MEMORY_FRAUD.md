@@ -9,7 +9,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 |---|------|--------|--------|-------|--------|
 | 01 | Discovery: mapa de superfície de risco | (direto no main) | DONE | PASS | SIM (1524c27) |
 | 02 | Modelos de domínio fraud | feat/fraud-02-domain-model | DONE | PASS | SIM (merge ad6281f) |
-| 03 | RiskContext | feat/fraud-03-context | pending | | |
+| 03 | RiskContext | feat/fraud-03-context | DONE | PASS | SIM (8767e98) |
 | 04 | Signal registry | feat/fraud-04-signals | pending | | |
 | 05 | Velocity signals | feat/fraud-05-velocity | pending | | |
 | 06 | Rule engine | feat/fraud-06-rule-engine | pending | | |
