@@ -38,7 +38,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 29 | Manager operations | feat/fraud-29-manager | DONE | PASS | SIM |
 | 30 | Insider risk | feat/fraud-30-insider | DONE | PASS | SIM |
 | 31 | Fail-safe policies | feat/fraud-31-failsafe | DONE | PASS | SIM |
-| 32 | Observability | feat/fraud-32-observability | pending | | |
+| 32 | Observability | feat/fraud-32-observability | DONE | PASS | SIM |
 | 33 | Adversarial suite | test/fraud-33-adversarial | pending | | |
 | 34 | Shadow backtest run | test/fraud-34-shadow-backtest | pending | | |
 | 35 | Challenge-only mode | feat/fraud-35-challenge | pending | | |
