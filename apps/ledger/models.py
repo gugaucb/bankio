@@ -64,6 +64,13 @@ class JournalEntry(models.Model):
     def delete(self, *args, **kwargs):
         raise ValidationError("Journal entries cannot be deleted.")
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(status__in=["DRAFT", "POSTED"]), name="journalentry_status_valid"
+            ),
+        ]
+
 
 class LedgerEntry(models.Model):
     journal = models.ForeignKey(JournalEntry, on_delete=models.PROTECT, related_name="entries")
@@ -83,3 +90,11 @@ class LedgerEntry(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["account", "side"])]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(amount__gt=0), name="ledgerentry_amount_positive"
+            ),
+            models.CheckConstraint(
+                check=models.Q(side__in=["DEBIT", "CREDIT"]), name="ledgerentry_side_valid"
+            ),
+        ]
