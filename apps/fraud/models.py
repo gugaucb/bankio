@@ -97,7 +97,7 @@ class RiskSignal(models.Model):
 
     evaluation = models.ForeignKey(RiskEvaluation, on_delete=models.CASCADE, related_name="signals")
     signal_id = models.CharField(max_length=64)
-    value = models.JSONField()
+    value = models.JSONField(null=True)  # None is a valid fact ("unknown")
 
     class Meta:
         constraints = [
