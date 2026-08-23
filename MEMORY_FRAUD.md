@@ -48,7 +48,13 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 34 | Shadow backtest run | feat/fraud-34-shadow-backtest | DONE | PASS | SIM |
 | 35 | Challenge-only mode | feat/fraud-35-challenge | DONE | PASS | SIM |
 | 36 | Medição challenge | feat/fraud-36-measure-challenge | DONE | PASS | SIM |
-| 37 | Limited enforcement | feat/fraud-37-limited | pending | | |
+| 37 | Limited enforcement | feat/fraud-37-limited | DONE | PASS | SIM |
+
+> Task 37 notes: risk gate moved OUT of the settlement transaction
+> (evidence must survive rollback); legacy compliance.evaluate_fraud no
+> longer participates in execute_transfer (D-F03 cutover complete);
+> CHALLENGE_ONLY transfers now raise STEP_UP_REQUIRED (Task 35 test
+> expectation updated accordingly).
 | 38 | Medição false positives | test/fraud-38-fp-measure | pending | | |
 | 39 | Full enforcement | feat/fraud-39-enforcement | pending | | |
 | 40 | Regressão completa Bankio | test/fraud-40-regression | pending | | |
