@@ -8,4 +8,4 @@ class FraudConfig(AppConfig):
 
     def ready(self):
         # ensure all signal modules are registered at startup
-        from . import signals, signals_velocity, signals_beneficiary  # noqa: F401
+        from . import signals, signals_velocity, signals_beneficiary, signals_auth  # noqa: F401
