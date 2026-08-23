@@ -19,7 +19,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 10 | Decision snapshot | feat/fraud-10-snapshot | DONE | PASS | SIM |
 | 11 | Shadow mode + engine modes | feat/fraud-11-shadow-mode | DONE | PASS | SIM |
 | 12 | Transfer integration (shadow) | (direto no main) | DONE | PASS | SIM (f553fa8) |
-| 13 | Step-up auth (challenge/MFA) | feat/fraud-13-step-up | pending | | |
+| 13 | Step-up auth (challenge/MFA) | feat/fraud-13-step-up | DONE | PASS | SIM |
 | 14 | Fraud alerts | feat/fraud-14-alerts | pending | | |
 | 15 | Fraud cases | feat/fraud-15-cases | pending | | |
 | 16 | Fraud RBAC | feat/fraud-16-rbac | pending | | |
