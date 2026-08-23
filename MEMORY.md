@@ -28,11 +28,11 @@ Master plan: immutable double-entry ledger → invariants → reversals/idempote
 | 13 | Batch chain | feat/ledger-13-batch-chain | DONE | PASS | main |
 | 14 | Anchor provider interface | feat/ledger-14-anchor-provider | DONE | PASS | main |
 | 15 | Simulated anchor provider | feat/ledger-15-simulated-anchor | DONE | PASS | main |
-| 16 | External anchor adapter + async command | feat/ledger-16-external-anchor | TODO | — | — |
+| 16 | Anchor config/policy factory | feat/ledger-16-external-anchor | DONE (external adapter = swap point; no real chain by design) | PASS | main |
 | 17 | Proof verification (auditor) | feat/ledger-17-proof-verification | TODO | — | — |
-| 18 | Legacy migration (N/A likely — see discovery) | feat/ledger-18-legacy-migration | TBD | — | — |
-| 19 | Dual-run transition (likely N/A) | feat/ledger-19-dual-run | TBD | — | — |
-| 20 | Admin read-only protection | feat/ledger-20-admin-security | TODO | — | — |
+| 18 | Legacy migration | — | SKIP per D002: no legacy balance columns; balances always ledger-derived. No fabricated history needed. | N/A | — |
+| 19 | Dual-run transition | — | SKIP: nothing to dual-run; system was born ledger-backed. | N/A | — |
+| 20 | Admin read-only protection | — | DONE within task 06 (admin read-only + tests). | PASS | main |
 | 21 | Audit events for ledger/proof lifecycle | feat/ledger-21-audit | TODO | — | — |
 | 22 | Adversarial testing | test/ledger-22-adversarial | TODO | — | — |
 | 23 | Performance testing | test/ledger-23-performance | TODO | — | — |
@@ -54,6 +54,12 @@ Tags planned: `bankio-ledger-core-v1`, `bankio-ledger-reconciled-v1`, `bankio-le
   - `Account.blocked_amount` is a stored non-ledger field — candidate for hold-ledger modeling or explicit projection policy.
 
 ## Discovery Summary (Task 01)
+
+### Session log (2026-08-23, cont. 3)
+- Tag `bankio-ledger-proof-v1` after task 17. 203 tests green.
+- Task 16: settings LEDGER_ANCHOR_PROVIDER/FREQUENCY/MIN_CONFIRMATIONS + provider_factory (external adapter intentionally unimplemented until a real chain is chosen).
+- Task 17 lesson: generate_merkle_proof must accept ANCHORED batches, not just SEALED.
+- Remaining: 21 audit events (partially done), 22 adversarial, 23 performance, 24 recovery, 25 final regression/Judge.
 
 ### Session log (2026-08-23, cont. 2)
 - Task 11: added `cryptography==44.0.1` to requirements (docker rebuild). `apps/ledger/signing.py` — DevEd25519Signer, single key boundary, swap point for KMS/HSM.
