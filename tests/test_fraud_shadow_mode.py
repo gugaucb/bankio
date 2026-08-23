@@ -53,7 +53,8 @@ def test_disabled_mode_does_not_interfere(db):
 
 
 def test_mode_change_is_audited_and_invalid_rejected(db, django_user_model):
-    admin = django_user_model.objects.create_user("fraud-admin", email="fa@t.io", password="x")
+    admin = django_user_model.objects.create_user(
+        "fraud-admin", email="fa@t.io", password="x", role="FRAUD_MANAGER")
     modes.set_mode(RiskEvaluation.EngineMode.ENFORCEMENT, actor=admin)
     assert modes.get_mode() == "ENFORCEMENT"
     event = AuditLog.objects.get(action="FRAUD_MODE_CHANGED")
