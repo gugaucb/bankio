@@ -16,11 +16,11 @@ Master plan: immutable double-entry ledger → invariants → reversals/idempote
 | 01 | Discovery (money mutation map) | feat/ledger-01-discovery | DONE (no-diff; content in baseline commit) | PASS | main (baseline) |
 | 02 | Ledger core model hardening (DB constraints) | feat/ledger-02-core-model | DONE | PASS | main |
 | 03 | Atomic posting engine + property tests | feat/ledger-03-posting-engine | DONE | PASS | main |
-| 04 | Balance projection & rebuild test | feat/ledger-04-balance-projection | TODO | — | — |
-| 05 | Money boundary audit (module by module) | feat/ledger-05-money-boundary | TODO | — | — |
-| 06 | Immutability & reversals | feat/ledger-06-immutability | TODO | — | — |
-| 07 | Idempotency (cards/lending gaps) | feat/ledger-07-idempotency | TODO | — | — |
-| 08 | Concurrency (PostgreSQL-proven) | feat/ledger-08-concurrency | TODO | — | — |
+| 04 | Balance projection & rebuild test | feat/ledger-04-balance-projection | DONE | PASS | main |
+| 05 | Money boundary audit (module by module) | feat/ledger-05-money-boundary | DONE | PASS | main |
+| 06 | Immutability & reversals | feat/ledger-06-immutability | DONE | PASS | main |
+| 07 | Idempotency (cards/lending gaps) | feat/ledger-07-idempotency | DONE | PASS | main |
+| 08 | Concurrency (PostgreSQL-proven) | feat/ledger-08-concurrency | DONE | PASS | main |
 | 09 | Reconciliation service + command | feat/ledger-09-reconciliation | TODO | — | — |
 | 10 | Canonical hash + hash chain | feat/ledger-10-canonical-hash | TODO | — | — |
 | 11 | Digital signature abstraction | feat/ledger-11-signatures | TODO | — | — |
@@ -56,6 +56,12 @@ Tags planned: `bankio-ledger-core-v1`, `bankio-ledger-reconciled-v1`, `bankio-le
 ## Discovery Summary (Task 01)
 
 ### Session log (2026-08-23)
+- **Tag `bankio-ledger-core-v1` created after task 08** — all core ledger gates pass, 156 tests green on main.
+- Task 04: `account_balance` now filters to POSTED journals only (drafts must not affect balances); DB constraint on blocked_amount >= 0.
+- Task 05: static scan test proves no balance writes anywhere; Account has no stored balance column; e2e transfer journal+audit verified. Note: transfer journals DEBIT sender / CREDIT receiver (customer accounts are liabilities).
+- Task 06: posted journal ROWS now DB-immutable (only `reverses` link may change; deletes blocked). Admin already read-only.
+- Task 07: new `LedgerIdempotencyRecord` model; wired into card purchase / statement payment / loan disburse / repay with replay semantics.
+- Task 08 lessons: idempotency check MUST come after row-lock acquisition; `select_for_update` cannot traverse nullable FKs via select_related; services that re-fetch under lock must copy state back onto caller's instance (approve/repay staleness bug found by regression).
 - Task 02 merged: DB CHECK constraints + Postgres triggers (balanced-post trigger, posted-entry immutability triggers). 9 new bypass-proof tests. Lesson: `RunSQL` needs SQL strings, not functions.
 - Task 03 merged: `LedgerAccount.status` (ACTIVE/BLOCKED/CLOSED), `JournalEntry.currency`; `post_journal` rejects non-active accounts, mixed currencies, invalid sides, empty journals. Property test for multi-line journals. 132 tests green on main.
 
