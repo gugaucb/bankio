@@ -111,9 +111,16 @@ def purchase(card_id, merchant, amount_raw, online=False, international=False, a
     if spent + amount > card.daily_limit:
         decline("DAILY_LIMIT_EXCEEDED")
 
-    # shadow risk observation on every approved-so-far purchase; hard controls
-    # above remain decisive regardless of score (spec PART 21)
-    _card_risk_observation(card, merchant, amount, online, international)
+    # full enforcement (spec PART 39): engine decisions now decline purchases.
+    # Hard controls above remain decisive regardless of score (spec PART 21).
+    ev = _card_risk_observation(card, merchant, amount, online, international)
+    if ev is not None:
+        from apps.fraud.gate import RiskGateIntervention, enforce
+
+        try:
+            enforce(ev)
+        except RiskGateIntervention as g:
+            decline(g.action)  # records a declined CardTransaction row
 
     account = card.account
     if card.type == "DEBIT_CARD":
