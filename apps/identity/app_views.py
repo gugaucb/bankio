@@ -270,6 +270,13 @@ def security_view(request):
             user = form.save()
             update_session_auth_hash(request, user)
             audit(actor=u, action="PASSWORD_CHANGED", request=request)
+            # shadow risk observation on sensitive profile change (spec PART 27)
+            from apps.fraud.profile_risk import evaluate_profile_change
+
+            try:
+                evaluate_profile_change(u, request=request, operation_type="PASSWORD_CHANGE")
+            except Exception:
+                pass  # never fatal; evaluate_profile_change already audits errors
             messages.success(request, "Password changed successfully.")
             return redirect("app_security")
         pw_error = "; ".join(" ".join(v) for v in form.errors.values())
