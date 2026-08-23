@@ -37,6 +37,13 @@ class Account(models.Model):
     blocked_amount = models.DecimalField(max_digits=19, decimal_places=2, default=Decimal("0"))
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(blocked_amount__gte=0), name="account_blocked_amount_nonnegative"
+            ),
+        ]
+
     def clean(self):
         if self.blocked_amount < 0:
             raise ValidationError("blocked_amount cannot be negative")
