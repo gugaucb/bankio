@@ -116,6 +116,11 @@ CSRF_COOKIE_SAMESITE = "Lax"
 BANKING_DEFAULT_TX_LIMIT = "5000.00"
 BANKING_DEFAULT_DAILY_LIMIT = "10000.00"
 
+# Ledger anchoring (external proof layer; never blocks banking transactions)
+LEDGER_ANCHOR_PROVIDER = "simulated"  # simulated | external
+LEDGER_ANCHOR_FREQUENCY = "every_seal"  # every_seal | hourly | daily
+LEDGER_ANCHOR_MIN_CONFIRMATIONS = 1  # provider polls before CONFIRMED
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
