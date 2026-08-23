@@ -174,6 +174,35 @@ class FraudAlert(models.Model):
         return f"ALERT-{self.pk} {self.alert_type}/{self.severity} {self.status}"
 
 
+class RiskChallenge(models.Model):
+    """Step-up authorization bound to ONE operation's material facts (INV 5).
+
+    Changing amount, beneficiary or account after the challenge invalidates it.
+    Single-use; short validity window; code stored hashed only.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING"
+        VERIFIED = "VERIFIED"
+        CONSUMED = "CONSUMED"
+        EXPIRED = "EXPIRED"
+
+    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="risk_challenges")
+    evaluation = models.ForeignKey(RiskEvaluation, on_delete=models.CASCADE, related_name="challenges")
+    material_hash = models.CharField(max_length=64)   # sha256 of bound operation facts
+    code_hash = models.CharField(max_length=32)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["customer", "status"])]
+
+    def __str__(self):
+        return f"CHL-{self.pk} {self.status}"
+
+
 class FraudEngineSetting(models.Model):
     """Runtime-controlled engine configuration (mode switches are audited)."""
 
