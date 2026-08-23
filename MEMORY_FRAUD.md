@@ -25,7 +25,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 16 | Fraud RBAC | feat/fraud-16-rbac | DONE | PASS | SIM |
 | 17 | Analyst portal | feat/fraud-17-console | DONE | PASS | SIM |
 | 18 | Rule lifecycle management | feat/fraud-18-rule-mgmt | DONE | PASS | SIM |
-| 19 | Backtesting/replay | feat/fraud-19-backtesting | pending | | |
+| 19 | Backtesting/replay | feat/fraud-19-backtesting | DONE | PASS | SIM |
 | 20 | Behavior baselines | feat/fraud-20-baselines | pending | | |
 | 21 | Device signals | feat/fraud-21-device | pending | | |
 | 22 | Beneficiary signals | feat/fraud-22-beneficiary | pending | | |
