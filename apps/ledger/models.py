@@ -51,6 +51,10 @@ class JournalEntry(models.Model):
     description = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default="DRAFT")
     currency = models.CharField(max_length=3, default="USD")
+    # cryptographic proof fields (set once at posting; see canonical.py)
+    payload_hash = models.CharField(max_length=64, null=True, blank=True, editable=False)
+    previous_entry_hash = models.CharField(max_length=64, null=True, blank=True, editable=False)
+    chain_hash = models.CharField(max_length=64, null=True, blank=True, editable=False)
     posted_at = models.DateTimeField(null=True, blank=True)
     reverses = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="reversed_by")
 
