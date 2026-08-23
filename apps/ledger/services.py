@@ -28,14 +28,32 @@ def account_balance(ledger_account):
 
 
 @transaction.atomic
-def post_journal(reference, description, lines, posted_at=None):
+def post_journal(reference, description, lines, posted_at=None, currency=None):
     """
     lines: iterable of (account, 'DEBIT'|'CREDIT', Decimal amount).
-    Atomically validates balance and posts. Raises ValueError when unbalanced.
+    Atomically validates balance and posts. Raises ValueError when unbalanced,
+    when any account is not ACTIVE, or when lines mix currencies.
     """
-    journal = JournalEntry.objects.create(reference=reference, description=description)
+    if not lines:
+        raise ValueError(f"Journal {reference} has no postings.")
+    currencies = {account.currency for account, _, _ in lines}
+    if len(currencies) > 1:
+        raise ValueError(f"Journal {reference} mixes currencies: {sorted(currencies)}")
+    journal_currency = next(iter(currencies))
+    if currency and currency != journal_currency:
+        raise ValueError(
+            f"Journal {reference} declared currency {currency} != posting currency {journal_currency}"
+        )
+
+    journal = JournalEntry.objects.create(
+        reference=reference, description=description, currency=journal_currency
+    )
     debits = credits = Decimal("0")
     for account, side, amount in lines:
+        if account.status != LedgerAccount.Status.ACTIVE:
+            raise ValueError(f"Account {account.code} is {account.status}; posting refused.")
+        if side not in ("DEBIT", "CREDIT"):
+            raise ValueError(f"Invalid side {side!r} in journal {reference}.")
         amount = Decimal(amount)
         LedgerEntry.objects.create(journal=journal, account=account, side=side, amount=amount)
         if side == "DEBIT":
