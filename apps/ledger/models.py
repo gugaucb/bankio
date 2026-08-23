@@ -94,6 +94,54 @@ class JournalEntry(models.Model):
         ]
 
 
+class LedgerProofBatch(models.Model):
+    """A sealed Merkle commitment over a contiguous range of posted journals.
+
+    Once SEALED the membership range, root and signature are immutable.
+    """
+
+    class Status(models.TextChoices):
+        OPEN = "OPEN"
+        SEALED = "SEALED"
+        ANCHORED = "ANCHORED"
+        VERIFIED = "VERIFIED"
+        FAILED = "FAILED"
+
+    sequence = models.PositiveBigIntegerField(unique=True)
+    first_journal_id = models.PositiveBigIntegerField()
+    last_journal_id = models.PositiveBigIntegerField()
+    entry_count = models.PositiveIntegerField()
+    merkle_root = models.CharField(max_length=64)
+    previous_batch_hash = models.CharField(max_length=64)
+    batch_manifest_hash = models.CharField(max_length=64, blank=True)
+    canonicalization_version = models.CharField(max_length=32)
+    hash_algorithm = models.CharField(max_length=32, default="SHA-256")
+    status = models.CharField(max_length=10, choices=Status.choices, default="SEALED")
+    signature = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sealed_at = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            orig = type(self).objects.get(pk=self.pk)
+            if orig.status != self.Status.OPEN and (
+                (orig.first_journal_id, orig.last_journal_id, orig.merkle_root,
+                 orig.entry_count, orig.signature) !=
+                (self.first_journal_id, self.last_journal_id, self.merkle_root,
+                 self.entry_count, self.signature)
+            ):
+                raise ValueError("Sealed proof batches are immutable.")
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(first_journal_id__lte=models.F("last_journal_id")),
+                name="proofbatch_range_valid",
+            ),
+        ]
+
+
 class LedgerIdempotencyRecord(models.Model):
     """Marks a financial operation as already executed.
 
