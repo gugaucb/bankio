@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="hidden lg:flex flex-col w-64 shrink-0 bg-white border-r border-gray-100 p-4 gap-1">
+    <div class="flex items-center gap-2 px-2 py-3 mb-4">
+      <div class="w-9 h-9 rounded-xl bg-emerald-800 flex items-center justify-center text-white font-bold">B</div>
+      <span class="text-lg font-bold text-emerald-900 tracking-tight">Bankio</span>
+    </div>
+    {% with active=nav %}
+    <a href="/app/" class="sidebar-link {% if nav == 'dashboard' %}active{% endif %}">▦ Dashboard</a>
+    <a href="/transfers/" class="sidebar-link {% if nav == 'transfers' %}active{% endif %}">⇄ Transfers</a>
+    <a href="/app/analytics/" class="sidebar-link {% if nav == 'analytics' %}active{% endif %}">◔ Analytics</a>
+    <a href="/app/accounts/" class="sidebar-link {% if nav == 'accounts' %}active{% endif %}">▣ Accounts</a>
+    <a href="/app/transactions/" class="sidebar-link {% if nav == 'transactions' %}active{% endif %}">≡ Transactions</a>
+    <a href="/app/investments/" class="sidebar-link {% if nav == 'investments' %}active{% endif %}">▲ Investments</a>
+    <a href="/app/cards/" class="sidebar-link {% if nav == 'cards' %}active{% endif %}">▭ Cards</a>
+    <div class="mt-auto flex flex-col gap-1">
+      <a href="/app/security/" class="sidebar-link {% if nav == 'security' %}active{% endif %}">🔒 Security</a>
+      <a href="/app/settings/" class="sidebar-link {% if nav == 'settings' %}active{% endif %}">⚙ Settings</a>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+        <button class="sidebar-link w-full text-left">↪ Sign out</button>
+      </form>
+    </div>
+    {% endwith %}
+  </aside>
+
+  <!-- Mobile top bar -->
+  <div class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-100 flex justify-around py-2 text-[11px] text-gray-500">
+    <a href="/app/" class="{% if nav == 'dashboard' or not nav %}text-emerald-800 font-semibold{% endif %}">▦ Home</a>
+    <a href="/app/accounts/">▣ Accounts</a>
+    <a href="/app/transactions/">≡ Txns</a>
+    <a href="/app/cards/">▭ Cards</a>
+    <a href="/app/security/">🔒 Security</a>
+  </div>
+
+  <!-- Main -->
+  <main class="flex-1 min-w-0 p-4 md:p-8 pb-20 overflow-x-hidden">
+    <header class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold">{{ page_heading|default:"Dashboard" }}</h1>
+        {% if messages %}
+          {% for m in messages %}<p class="text-sm mt-1 rounded-lg px-3 py-1.5 {% if m.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-emerald-50 text-emerald-800{% endif %}">{{ m }}</p>{% endfor %}
+        {% endif %}
+      </div>
+      <div class="flex items-center gap-3">
+        <input type="search" placeholder="Search..." class="hidden md:block rounded-xl border-gray-200 bg-white text-sm w-48 focus:border-emerald-700 focus:ring-emerald-700">
+        <button class="relative p-2 rounded-full hover:bg-gray-100" aria-label="Notifications">
+          🔔
+          {% if unread_notifications %}<span class="absolute top-0 right-0 w-4 h-4 text-[10px] bg-red-500 text-white rounded-full grid place-items-center">{{ unread_notifications }}</span>{% endif %}
+        </button>
+        <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-900 grid place-items-center font-semibold">{{ user.first_name.0|default:"B" }}</div>
+      </div>
+    </header>
+    {% block page %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

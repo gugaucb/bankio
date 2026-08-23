@@ -1,0 +1,15 @@
+<div class="card overflow-hidden">
+<table class="w-full text-sm">
+<thead><tr class="text-left text-xs text-gray-400 uppercase bg-gray-50"><th class="px-4 py-2">Customer</th><th>ID</th><th>Email (masked)</th><th>Phone (masked)</th><th></th></tr></thead>
+<tbody>
+{% for r in results %}
+<tr class="border-t hover:bg-emerald-50/40">
+  <td class="px-4 py-2 font-medium">{{ r.name }}</td>
+  <td class="font-mono text-xs">{{ r.customer_number }}</td>
+  <td>{{ r.email_masked }}</td>
+  <td>{{ r.phone_masked }}</td>
+  <td class="pr-4"><a href="/manage/customers/{{ r.user.pk }}/" class="text-emerald-800 font-medium">Open 360 →</a></td>
+</tr>
+{% empty %}<tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">{% if q %}No customers match "{{ q }}" in your scope.{% else %}Type to search your assigned customers.{% endif %}</td></tr>
+{% endfor %}
+</tbody></table></div>

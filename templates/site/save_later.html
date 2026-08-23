@@ -1,0 +1,16 @@
+{% extends "site/base.html" %}
+{% block title %}Application saved — Bankio{% endblock %}
+{% block content %}
+<section class="max-w-lg mx-auto px-4 py-16 text-center">
+  <h1 class="text-3xl font-bold text-emerald-950">Application saved</h1>
+  <p class="text-gray-500 mt-2 text-sm">Keep this reference — you can resume anytime.</p>
+  <div class="card p-8 mt-8">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-semibold">Your application</p>
+    <p class="font-mono text-2xl font-bold text-emerald-800 mt-2">{{ app.reference }}</p>
+    <p class="mt-4 text-sm text-gray-500">Secure resume link (demo):</p>
+    <p class="mt-1 text-sm break-all"><a href="{{ resume_url }}" class="text-emerald-700 underline">{{ resume_url }}</a></p>
+    <p class="mt-4 text-xs text-gray-400">Or resume with your reference + email on the resume page.</p>
+    <a href="/application/resume/" class="btn-secondary mt-6 inline-block text-sm">Resume page</a>
+  </div>
+</section>
+{% endblock %}

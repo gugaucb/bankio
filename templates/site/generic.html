@@ -1,0 +1,29 @@
+{% extends "site/base.html" %}
+{% block content %}
+<section class="bg-gradient-to-b from-[#f2f8f5] py-14">
+  <div class="max-w-7xl mx-auto px-4">
+    <h1 class="text-4xl font-extrabold text-emerald-950">{{ headline }}</h1>
+    <p class="mt-3 text-lg text-gray-600 max-w-2xl">{{ intro }}</p>
+  </div>
+</section>
+<section class="max-w-7xl mx-auto px-4 py-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  {% for f in features %}
+  <div class="card p-6">
+    <h2 class="font-semibold text-lg text-emerald-900">{{ f.title }}</h2>
+    <ul class="mt-3 text-sm text-gray-600 space-y-1">
+      {% for item in f.items %}<li>• {{ item }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</section>
+{% if extra %}
+<section class="max-w-7xl mx-auto px-4 pb-16">{% include extra %}</section>
+{% endif %}
+<section class="max-w-3xl mx-auto px-4 pb-20 text-center">
+  <h2 class="text-2xl font-bold text-emerald-950">{{ cta_title|default:"Get started with Bankio" }}</h2>
+  <div class="mt-6 flex justify-center gap-3 flex-wrap">
+    <a href="/open-account/" class="btn-primary">Open Your Account</a>
+    <a href="/login/" class="btn-secondary">Sign In</a>
+  </div>
+</section>
+{% endblock %}

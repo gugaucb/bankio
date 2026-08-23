@@ -1,0 +1,22 @@
+{% extends "site/base.html" %}
+{% block title %}Bankio Manager Portal{% endblock %}
+{% block content %}
+<section class="max-w-md mx-auto px-4 py-16">
+  <div class="text-center">
+    <span class="inline-grid w-12 h-12 rounded-2xl bg-emerald-900 text-white place-items-center text-xl font-bold">B</span>
+    <h1 class="text-2xl font-bold text-emerald-950 mt-4">Bankio Manager Portal</h1>
+    <p class="text-sm text-gray-500 mt-1">Authorized personnel only.</p>
+  </div>
+  {% if error %}<div class="card p-3 mt-6 bg-red-50 text-red-700 text-sm">{{ error }}</div>{% endif %}
+  <form method="post" action="/manager/login/" class="card p-6 mt-6 space-y-4">
+    {% csrf_token %}
+    <label class="block text-sm font-semibold">Corporate email / username
+      <input name="username" required autocomplete="username" class="mt-1 w-full rounded-xl border-gray-200"></label>
+    <label class="block text-sm font-semibold">Password
+      <input type="password" name="password" required autocomplete="current-password" class="mt-1 w-full rounded-xl border-gray-200"></label>
+    <button class="btn-primary w-full">Sign in to Manager Portal</button>
+  </form>
+  <p class="mt-6 text-xs text-gray-400 text-center">Customer? Use the <a href="/login/" class="underline">customer sign in</a> instead.
+    Role and authority checks are enforced server-side.</p>
+</section>
+{% endblock %}

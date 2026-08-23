@@ -1,0 +1,70 @@
+{% extends "manager/base.html" %}
+{% block title %}Customer 360 — {{ c.get_full_name }}{% endblock %}
+{% load humanize %}
+{% block page %}
+<div class="flex items-start justify-between mb-5">
+  <div>
+    <h1 class="text-xl font-bold">{{ c.get_full_name }}</h1>
+    <p class="text-sm text-gray-500">{{ profile_row.customer_number }} · {{ profile_row.segment }} ·
+       KYC: <span class="font-semibold {% if kyc_status == 'APPROVED' %}text-emerald-700{% elif kyc_status == 'PENDING' %}text-amber-600{% else %}text-red-600{% endif %}">{{ kyc_status }}</span></p>
+  </div>
+  <div x-data="{open:false}" class="relative">
+    <button @click="open=!open" class="btn-primary text-sm">Actions ▾</button>
+    <div x-show="open" x-transition class="absolute right-0 mt-2 w-72 card p-4 z-10 text-sm space-y-2">
+      {% include "manager/_open_account_form.html" with c=c %}
+    </div>
+  </div>
+</div>
+<div id="op-result"></div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+  <section class="xl:col-span-2 space-y-5">
+    <div class="card p-6">
+      <h3 class="font-semibold mb-3">Accounts</h3>
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-xs text-gray-400 uppercase"><th>Number</th><th>Type</th><th>Status</th><th class="text-right">Balance</th></tr></thead>
+        <tbody>{% for a in accounts %}
+          <tr class="border-t"><td class="py-2 font-mono text-xs">{{ a.account_number }}</td><td>{{ a.type }}</td>
+          <td><span class="px-2 py-0.5 rounded-lg text-xs {% if a.status == 'ACTIVE' %}bg-emerald-100 text-emerald-800{% else %}bg-red-100 text-red-700{% endif %}">{{ a.status }}</span></td>
+          <td class="text-right font-semibold">${{ a.current_balance|floatformat:2|intcomma }}</td></tr>
+        {% empty %}<tr><td colspan="4" class="py-3 text-gray-400">No accounts yet.</td></tr>{% endfor %}</tbody>
+      </table>
+      <p class="text-[11px] text-gray-400 mt-2">Balances are read-only informational values maintained by the ledger.</p>
+    </div>
+
+    <div class="card p-6">
+      <h3 class="font-semibold mb-3">Recent Transfers</h3>
+      <ul class="divide-y text-sm">
+        {% for t in transfers %}<li class="py-2 flex justify-between"><span class="font-mono text-xs text-gray-500">{{ t.reference }}</span><span>${{ t.amount|floatformat:2 }} · {{ t.status }}</span></li>
+        {% empty %}<li class="py-2 text-gray-400">No transfers.</li>{% endfor %}
+      </ul>
+    </div>
+  </section>
+
+  <aside class="space-y-5">
+    <div class="card p-6 text-sm space-y-1">
+      <h3 class="font-semibold mb-2">Relationship</h3>
+      <p>Total deposits: <b>${{ deposits|floatformat:2|intcomma }}</b></p>
+      <p>Investments: <b>${{ invested|floatformat:2 }}</b></p>
+      <p>Manager: {{ profile_row.assigned_manager|default:"—" }} · Branch: {{ profile_row.branch.name|default:"—" }}</p>
+    </div>
+    <div class="card p-6 text-sm">
+      <h3 class="font-semibold mb-2">Restrictions & Risk</h3>
+      {% for r in restrictions %}{% if r.active %}<p class="mb-1"><span class="px-2 py-0.5 rounded-lg text-xs bg-red-100 text-red-700">{{ r.restriction_type }}</span> <span class="text-gray-400 text-xs">{{ r.reason }}</span></p>{% endif %}{% empty %}
+      <p class="text-gray-400">No active restrictions.</p>{% endfor %}
+      {% for fa in fraud_alerts %}<p class="mt-2 text-xs"><span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-lg">FRAUD</span> {{ fa.reason }}</p>{% endfor %}
+    </div>
+    <form method="post" action="/manage/customers/{{ c.pk }}/notes/" class="card p-6 text-sm">
+      <h3 class="font-semibold mb-2">Internal Note (never visible to customer)</h3>
+      {% csrf_token %}
+      <textarea name="note" rows="2" required class="w-full rounded-xl border-gray-200" placeholder="Note..."></textarea>
+      <button class="btn-primary mt-2 !py-1.5 text-xs">Add note</button>
+    </form>
+    <div class="card p-6 text-sm">
+      <h3 class="font-semibold mb-2">Notes</h3>
+      {% for n in notes %}<p class="py-1 border-b border-gray-50"><span class="text-xs text-gray-400">{{ n.created_at|date:"d M H:i" }} · {{ n.manager.username }}</span><br>{{ n.note }}</p>
+      {% empty %}<p class="text-gray-400">No notes.</p>{% endfor %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

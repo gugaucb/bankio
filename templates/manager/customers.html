@@ -1,0 +1,27 @@
+{% extends "manager/base.html" %}
+{% block title %}Customers — Bankio Ops{% endblock %}
+{% block page %}
+<div class="flex items-center justify-between mb-5">
+  <h1 class="text-xl font-bold">Customer Search</h1>
+</div>
+<form hx-get="/manage/customers/" hx-target="#results" hx-trigger="input changed delay:300ms, search" class="mb-4 max-w-lg">
+  <input name="q" value="{{ q }}" placeholder="Name, email, phone, customer # or account #"
+         class="w-full rounded-xl border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+</form>
+<div id="results">{% include "manager/search_results.html" %}</div>
+
+<div x-data="{open:false}" class="mt-8 card p-6 max-w-2xl">
+  <button @click="open=!open" class="btn-primary text-sm">＋ New Customer Onboarding</button>
+  <form x-show="open" x-transition method="post" action="/manage/onboarding/" class="grid grid-cols-2 gap-4 mt-4 text-sm">
+    {% csrf_token %}
+    <input name="full_name" placeholder="Full legal name *" required class="col-span-2 rounded-xl border-gray-200">
+    <input name="date_of_birth" type="date" placeholder="Date of birth *" required class="rounded-xl border-gray-200">
+    <select name="segment" class="rounded-xl border-gray-200"><option>RETAIL</option><option>PREMIUM</option><option>BUSINESS</option></select>
+    <input name="email" type="email" placeholder="Email *" required class="rounded-xl border-gray-200">
+    <input name="phone" placeholder="Phone" class="rounded-xl border-gray-200">
+    <input name="address" placeholder="Address" class="col-span-2 rounded-xl border-gray-200">
+    <input name="occupation" placeholder="Occupation" class="rounded-xl border-gray-200">
+    <button class="btn-primary col-span-2">Create customer</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "site/base.html" %}
+{% block title %}Application {{ app.reference }} — Step {{ step }} of {{ total }}{% endblock %}
+{% block content %}
+<section class="max-w-xl mx-auto px-4 py-12">
+  <p class="text-sm text-gray-400 font-semibold">APPLICATION {{ app.reference }}</p>
+  <h1 class="text-2xl font-bold text-emerald-950 mt-1">{{ step_label }}</h1>
+
+  <div class="mt-4" role="progressbar" aria-valuenow="{{ step }}" aria-valuemin="1" aria-valuemax="{{ total }}">
+    <div class="flex justify-between text-xs text-gray-400 mb-1"><span>Step {{ step }} of {{ total }}</span><span>{{ step_label }}</span></div>
+    <div class="h-2 bg-emerald-100 rounded-full overflow-hidden">
+      <div class="h-full bg-emerald-700 rounded-full transition-all" style="width:{% widthratio step total 100 %}%"></div>
+    </div>
+  </div>
+
+  {% if error %}<div class="card p-3 mt-5 bg-red-50 text-red-700 text-sm">{{ error }}</div>{% endif %}
+
+  <form method="post" action="/open-account/{{ step }}/next/" class="card p-6 mt-6 space-y-4">
+    {% csrf_token %}
+
+    {% if step_key == "PERSONAL_INFORMATION" %}
+      <label class="block text-sm font-semibold">Full legal name *
+        <input name="full_name" required value="{{ data.full_name|default:'' }}" class="mt-1 w-full rounded-xl border-gray-200"></label>
+      <label class="block text-sm font-semibold">Date of birth *
+        <input type="date" name="date_of_birth" required value="{{ data.date_of_birth|default:'' }}" class="mt-1 w-full rounded-xl border-gray-200"></label>
+    {% elif step_key == "CONTACT_INFORMATION" %}
+      <label class="block text-sm font-semibold">Email *
+        <input type="email" name="email" required value="{{ data.email|default:'' }}" class="mt-1 w-full rounded-xl border-gray-200"></label>
+      <label class="block text-sm font-semibold">Phone
+        <input name="phone" value="{{ data.phone|default:'' }}" class="mt-1 w-full rounded-xl border-gray-200"></label>
+    {% elif step_key == "ADDRESS" %}
+      <label class="block text-sm font-semibold">Residential address *
+        <input name="address" required value="{{ data.address|default:'' }}" class="mt-1 w-full rounded-xl border-gray-200"></label>
+    {% elif step_key == "IDENTITY" %}
+      <label class="block text-sm font-semibold">National ID / passport number *
+        <input name="national_id" required value="{{ data.national_id|default:'' }}" class="mt-1 w-full rounded-xl border-gray-200"></label>
+      <label class="block text-sm font-semibold">Source of funds *
+        <select name="source_of_funds" class="mt-1 w-full rounded-xl border-gray-200">
+          {% for s in funds_options %}
+          <option {% if data.source_of_funds == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select></label>
+    {% elif step_key == "EMPLOYMENT_OCCUPATION" %}
+      <label class="block text-sm font-semibold">Occupation *
+        <input name="occupation" required value="{{ data.occupation|default:'' }}" class="mt-1 w-full rounded-xl border-gray-200"></label>
+      <label class="block text-sm font-semibold">Employment status *
+        <select name="employment_status" class="mt-1 w-full rounded-xl border-gray-200">
+          {% for s in employment_options %}
+          <option {% if data.employment_status == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select></label>
+    {% elif step_key == "INCOME" %}
+      <label class="block text-sm font-semibold">Monthly income (USD) *
+        <input type="number" min="0" step="0.01" name="monthly_income" required value="{{ data.monthly_income|default:'' }}" class="mt-1 w-full rounded-xl border-gray-200"></label>
+    {% elif step_key == "TAX_INFORMATION" %}
+      <label class="block text-sm font-semibold">Country of tax residency *
+        <input name="tax_residency" required value="{{ data.tax_residency|default:'' }}" class="mt-1 w-full rounded-xl border-gray-200"></label>
+    {% elif step_key == "PRODUCT_SELECTION" %}
+      <fieldset class="space-y-2 text-sm">
+        <legend class="font-semibold mb-2">Products you're interested in (optional)</legend>
+        {% for code, name in products %}
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="products" value="{{ code }}" {% if code in app.products %}checked{% endif %} class="rounded"> {{ name }}
+        </label>
+        {% endfor %}
+      </fieldset>
+      <p class="text-xs text-gray-400">Product selection expresses interest — final activation follows eligibility review.</p>
+    {% endif %}
+
+    <div class="flex justify-between pt-2">
+      <a href="/application/save-later/" class="text-sm text-gray-500 underline underline-offset-4">Save and Continue Later</a>
+      <button class="btn-primary">{% if step == total %}Review{% else %}Continue{% endif %}</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

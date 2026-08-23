@@ -1,0 +1,29 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Security — Bankio{% endblock %}
+{% block page %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-4xl">
+  <form method="post" class="card p-6 space-y-4">
+    {% csrf_token %}
+    <input type="hidden" name="change_password" value="1">
+    <h3 class="font-semibold">Change Password</h3>
+    {% if pw_error %}<p class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2">{{ pw_error }}</p>{% endif %}
+    {{ form.as_p }}
+    <button class="btn-primary w-full">Update password</button>
+    <p class="text-xs text-gray-400">You will stay signed in after changing your password.</p>
+  </form>
+
+  <div class="card p-6">
+    <h3 class="font-semibold mb-4">Recent Sign-in Activity</h3>
+    <ul class="divide-y divide-gray-50 text-sm">
+      {% for action, ts, ip in recent_logins %}
+      <li class="py-2.5 flex justify-between">
+        <span class="{% if 'MFA' in action or action == 'LOGIN' %}text-emerald-700{% else %}text-gray-500{% endif %} font-medium">{{ action }}</span>
+        <span class="text-gray-400">{{ ts|date:"d M Y, H:i" }}{% if ip %} · {{ ip }}{% endif %}</span>
+      </li>
+      {% empty %}
+      <li class="py-6 text-center text-gray-400">No sign-in events recorded.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

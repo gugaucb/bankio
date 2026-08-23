@@ -1,0 +1,59 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Transfers — Bankio{% endblock %}
+{% load humanize %}
+{% block page %}
+<div id="transfer-result">{% if error %}{% include "transfers/_result.html" with error=error created=True %}{% endif %}</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+  <div class="card p-6">
+    <h2 class="font-semibold mb-4">New Transfer</h2>
+    <form method="post" hx-post="/transfers/" hx-target="#transfer-result" class="space-y-4" id="transfer-form">
+      {% csrf_token %}
+      <div>
+        <label class="text-sm text-gray-500">From account</label>
+        <select name="source_account" required class="w-full rounded-xl border-gray-200 text-sm">
+          {% for a in accounts %}<option value="{{ a.pk }}">{{ a.account_number }} — ${{ a.current_balance|floatformat:2 }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-sm text-gray-500">To (Bankio account)</label>
+        <input name="destination_account" list="bankio-accounts" placeholder="Account number" class="w-full rounded-xl border-gray-200 text-sm">
+        <datalist id="bankio-accounts"></datalist>
+      </div>
+      <div>
+        <label class="text-sm text-gray-500">Or beneficiary</label>
+        <select name="beneficiary" class="w-full rounded-xl border-gray-200 text-sm">
+          <option value="">—</option>
+          {% for b in beneficiaries %}<option value="{{ b.pk }}">{{ b.name }} ({{ b.account_number }})</option>{% endfor %}
+        </select>
+      </div>
+      <input name="amount" type="number" step="0.01" min="0.01" placeholder="Amount ($)" required
+             class="w-full rounded-xl border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+      <input name="description" placeholder="Description" maxlength="255"
+             class="w-full rounded-xl border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+      <button class="btn-primary w-full">Transfer</button>
+    </form>
+  </div>
+
+  <div class="lg:col-span-2 card p-6">
+    <h2 class="font-semibold mb-4">History</h2>
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-gray-400 uppercase">
+        <th class="py-2">Reference</th><th>Amount</th><th>Status</th><th>Date</th><th>Description</th></tr></thead>
+      <tbody>
+        {% for t in transfers %}
+        <tr class="border-t border-gray-50 hover:bg-emerald-50/40">
+          <td class="py-3 font-mono text-xs">{{ t.reference }}</td>
+          <td class="font-semibold">${{ t.amount|floatformat:2 }}</td>
+          <td><span class="px-2 py-0.5 rounded-lg text-xs {% if t.status == 'COMPLETED' %}bg-emerald-100 text-emerald-800{% elif t.status == 'FAILED' %}bg-red-100 text-red-700{% else %}bg-amber-100 text-amber-800{% endif %}">{{ t.status }}</span></td>
+          <td class="text-gray-400 text-xs">{{ t.created_at|date:"d M H:i" }}</td>
+          <td class="text-gray-500 text-xs truncate max-w-[160px]">{{ t.description }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="py-6 text-center text-gray-400">No transfers yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

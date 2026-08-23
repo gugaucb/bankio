@@ -1,0 +1,26 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Settings — Bankio{% endblock %}
+{% block page %}
+<div class="max-w-xl space-y-5">
+  <div class="card p-6">
+    <h3 class="font-semibold mb-4">Profile</h3>
+    <dl class="text-sm divide-y">
+      <div class="py-2 flex justify-between"><dt class="text-gray-400">Name</dt><dd class="font-semibold">{{ profile.get_full_name|default:profile.username }}</dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-gray-400">Username</dt><dd>{{ profile.username }}</dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-gray-400">Email</dt><dd>{{ profile.email }}</dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-gray-400">Phone</dt><dd>{{ profile.phone|default:"—" }}</dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-gray-400">Role</dt><dd>{{ profile.role }}</dd></div>
+    </dl>
+  </div>
+
+  <div class="card p-6">
+    <h3 class="font-semibold mb-3">Preferences</h3>
+    <p class="text-sm text-gray-500">Notification and statement preferences are coming soon in this demo.</p>
+  </div>
+
+  <div class="card p-6">
+    <h3 class="font-semibold mb-3">Password</h3>
+    <a href="/app/security/" class="btn-secondary text-sm">Change password</a>
+  </div>
+</div>
+{% endblock %}

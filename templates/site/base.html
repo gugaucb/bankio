@@ -1,0 +1,113 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ page_title|default:"Bankio" }} — Bankio{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Bankio — digital banking built around your life. Accounts, cards, transfers, investments and loans in one secure experience.{% endblock %}">
+  {% block og %}{% endblock %}
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    :root { --emerald:#0d5c46; --emerald-dark:#093f30; --mint:#e8f4ef; }
+    body { font-family:'Inter', ui-sans-serif, system-ui, sans-serif; color:#16241f; }
+    .btn-primary { background:var(--emerald); color:#fff; border-radius:.85rem; padding:.7rem 1.4rem; font-weight:600; display:inline-block; transition:.15s; }
+    .btn-primary:hover { background:var(--emerald-dark); }
+    .btn-secondary { border:1.5px solid var(--emerald); color:var(--emerald); border-radius:.85rem; padding:.65rem 1.35rem; font-weight:600; display:inline-block; }
+    .btn-secondary:hover { background:var(--mint); }
+    .card { background:#fff; border-radius:1.25rem; box-shadow:0 1px 3px rgba(13,92,70,.07),0 6px 18px rgba(13,92,70,.06); }
+    a:focus-visible, button:focus-visible, input:focus-visible { outline:3px solid #34d399; outline-offset:2px; }
+    @keyframes floaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    .floaty { animation:floaty 5s ease-in-out infinite; }
+    select { font-size:.875rem; line-height:1.25rem; color:#16241f; font-weight:400; }
+    select option { font-size:.875rem; line-height:1.25rem; }
+    @keyframes fadeup { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+    .fadeup { animation:fadeup .6s ease both; }
+    .fadeup-delay { animation:fadeup .6s ease .9s both; }
+  </style>
+</head>
+<body class="bg-[#fafbfa] min-h-screen">
+<header x-data="{open:false}" class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-gray-100">
+  <nav class="max-w-7xl mx-auto flex items-center justify-between px-4 h-16" aria-label="Main">
+    <a href="/" class="flex items-center gap-2 font-bold text-emerald-900 text-lg">
+      <span class="w-8 h-8 rounded-xl bg-emerald-800 text-white grid place-items-center">B</span> Bankio
+    </a>
+    <div class="hidden lg:flex items-center gap-6 text-sm text-gray-600">
+      <a href="/personal/" class="hover:text-emerald-800">Personal</a>
+      <a href="/business/" class="hover:text-emerald-800">Business</a>
+      <a href="/cards/" class="hover:text-emerald-800">Cards</a>
+      <a href="/investments/" class="hover:text-emerald-800">Investments</a>
+      <a href="/loans/" class="hover:text-emerald-800">Loans</a>
+      <a href="/personal/#benefits" class="hover:text-emerald-800">Benefits</a>
+      <a href="/security/" class="hover:text-emerald-800">Security</a>
+      <a href="/help/" class="hover:text-emerald-800">Help</a>
+    </div>
+    <div class="hidden lg:flex items-center gap-3">
+      <a href="/login/" class="text-sm font-semibold text-gray-700 hover:text-emerald-800 px-2">Sign In</a>
+      <a href="/open-account/" class="btn-primary !py-2 !px-4 text-sm">Open an Account</a>
+      <a href="/manager/login/" class="text-xs text-gray-400 hover:text-emerald-700 underline underline-offset-4">Manager Access</a>
+    </div>
+    <button @click="open=!open" class="lg:hidden p-2" aria-label="Toggle menu" :aria-expanded="open">
+      <svg width="24" height="24" fill="none" stroke="#0d5c46" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </nav>
+  <div x-show="open" x-transition class="lg:hidden bg-white border-t px-4 py-4 space-y-2 text-sm">
+    <a href="/personal/" class="block py-1">Personal</a>
+    <a href="/business/" class="block py-1">Business</a>
+    <a href="/cards/" class="block py-1">Cards</a>
+    <a href="/investments/" class="block py-1">Investments</a>
+    <a href="/loans/" class="block py-1">Loans</a>
+    <a href="/security/" class="block py-1">Security</a>
+    <a href="/help/" class="block py-1">Help</a>
+    <hr class="my-2">
+    <a href="/login/" class="btn-secondary w-full text-center">Sign In</a>
+    <a href="/open-account/" class="btn-primary w-full text-center mt-2 block">Open an Account</a>
+    <a href="/manager/login/" class="block text-center text-xs text-gray-400 py-2 underline underline-offset-4">Manager Access</a>
+  </div>
+</header>
+
+<main>{% block content %}{% endblock %}</main>
+
+<footer class="bg-emerald-950 text-emerald-100 mt-20">
+  <div class="max-w-7xl mx-auto px-4 py-14 grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
+    <div>
+      <h3 class="font-semibold mb-3 text-white">Bankio</h3>
+      <ul class="space-y-2 text-emerald-200/80">
+        <li><a href="#" class="hover:text-white">About</a></li>
+        <li><a href="#" class="hover:text-white">Careers</a></li>
+        <li><a href="/security/" class="hover:text-white">Security</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="font-semibold mb-3 text-white">Products</h3>
+      <ul class="space-y-2 text-emerald-200/80">
+        <li><a href="/personal/" class="hover:text-white">Accounts</a></li>
+        <li><a href="/cards/" class="hover:text-white">Cards</a></li>
+        <li><a href="/investments/" class="hover:text-white">Investments</a></li>
+        <li><a href="/loans/" class="hover:text-white">Loans</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="font-semibold mb-3 text-white">Support</h3>
+      <ul class="space-y-2 text-emerald-200/80">
+        <li><a href="/help/" class="hover:text-white">Help Center</a></li>
+        <li><a href="/help/#contact" class="hover:text-white">Contact</a></li>
+        <li><a href="#" class="hover:text-white">Accessibility</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="font-semibold mb-3 text-white">Legal</h3>
+      <ul class="space-y-2 text-emerald-200/80">
+        <li><a href="#" class="hover:text-white">Privacy</a></li>
+        <li><a href="#" class="hover:text-white">Terms</a></li>
+        <li><a href="#" class="hover:text-white">Cookies</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="border-t border-emerald-900 py-5 text-center text-xs text-emerald-300/70 max-w-3xl mx-auto px-4">
+    © Bankio. Bankio is a fictional demo application for showcasing a digital banking platform.
+    It is not a real financial institution and no real financial services are offered.
+  </div>
+</footer>
+</body>
+</html>

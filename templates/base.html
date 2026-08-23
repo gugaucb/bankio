@@ -1,0 +1,26 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Bankio{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    :root { --emerald: #0d5c46; --emerald-dark:#093f30; --mint:#e8f4ef; }
+    body { background:#f7f8f7; color:#1a2b25; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    .card { background:#fff; border-radius: 1rem; box-shadow: 0 1px 3px rgba(13,92,70,.06), 0 4px 14px rgba(13,92,70,.05); }
+    .btn-primary { background: var(--emerald); color:#fff; border-radius:.75rem; padding:.6rem 1.25rem; font-weight:600; }
+    .btn-primary:hover { background: var(--emerald-dark); }
+    .sidebar-link { color:#5b6b64; padding:.55rem .9rem; border-radius:.65rem; display:flex; gap:.7rem; align-items:center; font-size:.9rem;}
+    .sidebar-link:hover { background:#f0f5f2; color:var(--emerald); }
+    .sidebar-link.active { background: var(--emerald); color:#fff; }
+    input.money::before { content:"$"; }
+  </style>
+</head>
+<body class="min-h-screen">
+{% block content %}{% endblock %}
+</body>
+</html>

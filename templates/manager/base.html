@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex min-h-screen">
+  <aside class="hidden lg:flex flex-col w-60 shrink-0 bg-emerald-950 text-emerald-50 p-4 gap-0.5 text-sm">
+    <div class="flex items-center gap-2 px-2 py-3 mb-3">
+      <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-900 grid place-items-center font-bold">B</div>
+      <div><p class="font-bold leading-tight">Bankio Ops</p><p class="text-[10px] text-emerald-300">{{ profile.get_level_display|default:"Manager" }}</p></div>
+    </div>
+    <a href="/manage/" class="px-3 py-2 rounded-lg hover:bg-emerald-900 {% if request.path == '/manage/' %}bg-emerald-800{% endif %}">▤ Overview</a>
+    <a href="/manage/customers/" class="px-3 py-2 rounded-lg hover:bg-emerald-900">👥 Customers</a>
+    <a href="/manage/customers/?new=1" class="px-3 py-2 rounded-lg hover:bg-emerald-900">＋ Open Customer</a>
+    <a href="/manage/applications/" class="px-3 py-2 rounded-lg hover:bg-emerald-900">📄 Applications</a>
+    <a href="/manage/card-requests/" class="px-3 py-2 rounded-lg hover:bg-emerald-900">💳 Card Requests</a>
+    <a href="/manage/approvals/" class="px-3 py-2 rounded-lg hover:bg-emerald-900">✓ Approvals</a>
+    <a href="/manage/restrictions/" class="px-3 py-2 rounded-lg hover:bg-emerald-900">⛔ Restrictions</a>
+    <div class="mt-auto flex flex-col gap-0.5">
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+        <button class="px-3 py-2 rounded-lg hover:bg-emerald-900 w-full text-left">↪ Sign out</button>
+      </form>
+    </div>
+  </aside>
+  <main class="flex-1 min-w-0 p-4 md:p-8 bg-[#f4f6f5] overflow-x-hidden">
+    {% if messages %}{% for m in messages %}<div class="mb-4 text-sm bg-emerald-50 text-emerald-900 rounded-xl p-3">{{ m }}</div>{% endfor %}{% endif %}
+    {% block page %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Transactions — Bankio{% endblock %}
+{% block page %}
+<div class="flex gap-2 mb-4 text-sm">
+  <a href="/app/transactions/" class="px-3 py-1.5 rounded-full {% if not filter %}bg-emerald-800 text-white{% else %}bg-white text-gray-500{% endif %}">All</a>
+  <a href="/app/transactions/?dir=in" class="px-3 py-1.5 rounded-full {% if filter == 'in' %}bg-emerald-800 text-white{% else %}bg-white text-gray-500{% endif %}">Incoming</a>
+  <a href="/app/transactions/?dir=out" class="px-3 py-1.5 rounded-full {% if filter == 'out' %}bg-emerald-800 text-white{% else %}bg-white text-gray-500{% endif %}">Outgoing</a>
+</div>
+
+<div class="card divide-y divide-gray-50">
+  {% for tx in txs %}
+  <div class="flex items-center justify-between px-6 py-3.5">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full {% if tx.direction == 'in' %}bg-emerald-50 text-emerald-700{% else %}bg-red-50 text-red-600{% endif %} grid place-items-center font-semibold">{{ tx.other.0 }}</div>
+      <div>
+        <p class="text-sm font-medium">{{ tx.other }}</p>
+        <p class="text-xs text-gray-400">{{ tx.obj.created_at|date:"d M Y, H:i" }} · {{ tx.obj.reference }} · {{ tx.obj.status }}</p>
+      </div>
+    </div>
+    <span class="text-sm font-semibold {% if tx.direction == 'in' %}text-emerald-700{% else %}text-red-600{% endif %}">
+      {% if tx.direction == 'in' %}+{% else %}-{% endif %}${{ tx.obj.amount|floatformat:2 }}
+    </span>
+  </div>
+  {% empty %}
+  <div class="px-6 py-8 text-center text-sm text-gray-400">No transactions.</div>
+  {% endfor %}
+</div>
+
+<h3 class="font-semibold mt-8 mb-3">Card Transactions</h3>
+<div class="card divide-y divide-gray-50">
+  {% for ct in card_txs %}
+  <div class="flex items-center justify-between px-6 py-3">
+    <div>
+      <p class="text-sm font-medium">{{ ct.merchant }}</p>
+      <p class="text-xs text-gray-400">{{ ct.created_at|date:"d M Y, H:i" }} · card ••••{{ ct.card.last4 }}{% if ct.declined %} · DECLINED ({{ ct.decline_reason }}){% endif %}</p>
+    </div>
+    <span class="text-sm font-semibold {% if ct.declined %}text-gray-300 line-through{% else %}text-red-600{% endif %}}">${{ ct.amount|floatformat:2 }}</span>
+  </div>
+  {% empty %}
+  <div class="px-6 py-8 text-center text-sm text-gray-400">No card transactions.</div>
+  {% endfor %}
+</div>
+{% endblock %}

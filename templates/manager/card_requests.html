@@ -1,0 +1,49 @@
+{% extends "manager/base.html" %}
+{% block title %}Card Requests — Bankio Manager{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+  <h1 class="text-2xl font-bold text-emerald-950">Card Requests</h1>
+
+  <div class="card p-6">
+    <h2 class="font-semibold mb-3">Pending ({{ pending|length }})</h2>
+    <div class="divide-y divide-gray-50">
+      {% for r in pending %}
+      <div class="py-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <p class="font-semibold">{{ r.customer.get_full_name|default:r.customer.username }}
+            <span class="font-normal text-gray-400">· {{ r.customer.email }}</span></p>
+          <span class="px-3 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">{{ r.get_type_display }}</span>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Account {{ r.account.account_number }} · requested limit ${{ r.requested_limit|floatformat:2 }} · {{ r.created_at|date:"d M Y, H:i" }}</p>
+        <form method="post" action="{% url 'manager_decide_card' r.pk %}" class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          {% csrf_token %}
+          {% if r.type == 'CREDIT_CARD' %}
+            <label class="text-xs text-gray-500">Approved limit $</label>
+            <input type="number" name="approved_limit" min="200" max="20000" step="100" value="{{ r.requested_limit|stringformat:'s' }}"
+                   class="w-28 rounded-lg border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+          {% endif %}
+          <button name="decision" value="approve" class="px-3 py-1.5 rounded-lg bg-emerald-800 text-white font-semibold hover:bg-emerald-900">Approve</button>
+          <button name="decision" value="reject" class="px-3 py-1.5 rounded-lg border border-red-300 text-red-700 font-semibold hover:bg-red-50">Reject</button>
+        </form>
+      </div>
+      {% empty %}
+      <p class="py-6 text-center text-sm text-gray-400">No pending card requests.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card p-6">
+    <h2 class="font-semibold mb-3">Recent Decisions</h2>
+    <ul class="divide-y divide-gray-50 text-sm">
+      {% for r in decided %}
+      <li class="py-2.5 flex justify-between">
+        <span>{{ r.customer.username }} · {{ r.get_type_display }}{% if r.approved_limit %} · ${{ r.approved_limit|floatformat:2 }}{% endif %}</span>
+        <span class="{% if r.status == 'APPROVED' %}text-emerald-700{% else %}text-red-600{% endif %} font-semibold">{{ r.status }}</span>
+      </li>
+      {% empty %}
+      <li class="py-6 text-center text-gray-400">No decisions yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Cards — Bankio{% endblock %}
+{% block page %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  <div class="space-y-4">
+    <h3 class="font-semibold">My Cards</h3>
+    {% for c in cards %}
+    <div class="card p-6">
+      <div class="rounded-xl bg-gradient-to-br from-emerald-900 to-emerald-700 text-white p-5">
+        <div class="flex justify-between items-start">
+          <span class="text-xs opacity-80">{{ c.get_type_display }}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full {% if c.status == 'ACTIVE' %}bg-white/20{% else %}bg-black/30{% endif %}">{{ c.status }}</span>
+        </div>
+        <p class="tracking-widest mt-6 text-lg">{{ c.masked_number }}</p>
+        <div class="flex justify-between mt-4 text-xs opacity-80"><span>{{ c.holder_name }}</span><span>{{ c.expiry_month|stringformat:"02d" }}/{{ c.expiry_year|slice:"-2:" }}</span></div>
+      </div>
+      <dl class="grid grid-cols-2 gap-x-6 gap-y-1 mt-4 text-sm">
+        {% if c.credit_limit > 0 %}
+        <dt class="text-gray-400">Credit limit</dt><dd class="font-semibold">${{ c.credit_limit|floatformat:2 }}</dd>{% endif %}
+        <dt class="text-gray-400">Per-transaction limit</dt><dd>${{ c.tx_limit|floatformat:2 }}</dd>
+        <dt class="text-gray-400">Daily limit</dt><dd>${{ c.daily_limit|floatformat:2 }}</dd>
+        <dt class="text-gray-400">Linked account</dt><dd class="font-mono">{{ c.account.account_number }}</dd>
+      </dl>
+    </div>
+    {% empty %}
+    <div class="card p-8 text-center text-gray-400 text-sm">You have no cards yet. Request one on the right.</div>
+    {% endfor %}
+
+    <h3 class="font-semibold pt-4">My Requests</h3>
+    <div class="card divide-y divide-gray-50 text-sm">
+      {% for r in requests %}
+      <div class="flex items-center justify-between px-5 py-3">
+        <div>
+          <p class="font-medium">{{ r.get_type_display }} · ${{ r.requested_limit|floatformat:0 }} requested</p>
+          <p class="text-xs text-gray-400">{{ r.created_at|date:"d M Y, H:i" }}{% if r.decision_reason %} · {{ r.decision_reason }}{% endif %}</p>
+        </div>
+        <span class="px-3 py-0.5 rounded-full text-xs font-semibold {% if r.status == 'PENDING' %}bg-amber-100 text-amber-800{% elif r.status == 'APPROVED' %}bg-emerald-100 text-emerald-800{% else %}bg-red-100 text-red-700{% endif %}">{{ r.status }}</span>
+      </div>
+      {% empty %}
+      <div class="px-5 py-6 text-center text-gray-400">No card requests yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Request form -->
+  <div>
+    <h3 class="font-semibold mb-4">Request a Card</h3>
+    <form method="post" class="card p-6 space-y-4 max-w-md">
+      {% csrf_token %}
+      <input type="hidden" name="request_card" value="1">
+      {% if error %}<p class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2">{{ error }}</p>{% endif %}
+      <label class="block text-sm font-medium">Account
+        <select name="account" required class="mt-1 w-full rounded-xl border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+          {% for a in my_accounts %}<option value="{{ a.pk }}">{{ a.get_type_display }} {{ a.account_number }} — ${{ a.current_balance|floatformat:2 }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="block text-sm font-medium">Card type
+        <select name="type" class="mt-1 w-full rounded-xl border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+          <option value="CREDIT_CARD">Credit Card</option>
+          <option value="DEBIT_CARD">Debit Card</option>
+          <option value="VIRTUAL_CARD">Virtual Card</option>
+        </select>
+      </label>
+      <label class="block text-sm font-medium">Requested monthly spending limit (USD)
+        <input type="number" name="limit" min="200" max="20000" step="100" value="2000"
+               class="mt-1 w-full rounded-xl border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+      </label>
+      <p class="text-xs text-gray-400">Requests are reviewed by a Bankio manager. Approved limits may differ from the requested amount.</p>
+      <button class="btn-primary w-full">Submit request</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

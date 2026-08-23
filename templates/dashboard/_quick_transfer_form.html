@@ -1,0 +1,12 @@
+<form method="post" action="/transfers/" hx-post="/transfers/" hx-target="#transfer-result" hx-swap="innerHTML" class="space-y-3">
+  {% csrf_token %}
+  <input type="hidden" name="destination_account_number" value="{{ account_number }}">
+  <select name="source_account" required class="w-full rounded-xl border-gray-200 text-sm">
+    {% for a in accounts %}<option value="{{ a.pk }}">{{ a.account_number }} — ${{ a.current_balance|floatformat:2 }}</option>{% endfor %}
+  </select>
+  <div class="flex gap-2">
+    <input name="amount" type="number" step="0.01" min="0.01" placeholder="$0.00" required
+           class="flex-1 rounded-xl border-gray-200 text-sm focus:border-emerald-700 focus:ring-emerald-700">
+    <button class="btn-primary !py-2 text-sm">Send</button>
+  </div>
+</form>

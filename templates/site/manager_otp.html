@@ -1,0 +1,15 @@
+{% extends "site/base.html" %}
+{% block title %}Manager MFA — Bankio{% endblock %}
+{% block content %}
+<section class="max-w-md mx-auto px-4 py-16 text-center">
+  <h1 class="text-2xl font-bold text-emerald-950">Manager Portal — MFA</h1>
+  <p class="text-sm text-gray-500 mt-1">Enter the verification code (demo: check the OTP log).</p>
+  {% if error %}<div class="card p-3 mt-4 bg-red-50 text-red-700 text-sm">{{ error }}</div>{% endif %}
+  <form method="post" action="/manager/login/otp/" class="card p-6 mt-6 space-y-4">
+    {% csrf_token %}
+    <label class="block text-sm font-semibold">Verification code
+      <input name="code" inputmode="numeric" required maxlength="6" class="mt-1 w-full rounded-xl border-gray-200 tracking-widest text-center"></label>
+    <button class="btn-primary w-full">Verify</button>
+  </form>
+</section>
+{% endblock %}

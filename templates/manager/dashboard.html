@@ -1,0 +1,35 @@
+{% extends "manager/base.html" %}
+{% block title %}Manager Overview — Bankio{% endblock %}
+{% load humanize %}
+{% block page %}
+<h1 class="text-xl font-bold mb-1">Branch Operations</h1>
+<p class="text-sm text-gray-500 mb-5">{{ profile.get_level_display }} — {{ profile.branch.name|default:"unassigned branch" }}</p>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="card p-4"><p class="text-xs text-gray-400">Managed Customers</p><p class="text-2xl font-bold">{{ managed_count }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400">Total Customer Assets</p><p class="text-2xl font-bold">${{ total_assets|floatformat:0|intcomma }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400">Opened This Month</p><p class="text-2xl font-bold">{{ opened_this_month }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400">Pending Openings</p><p class="text-2xl font-bold">{{ pending_openings }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400">Pending Approvals</p><a href="/manage/approvals/" class="text-2xl font-bold hover:text-emerald-700">{{ pending_approvals }}</a></div>
+  <div class="card p-4"><p class="text-xs text-gray-400">Pending KYC</p><p class="text-2xl font-bold">{{ pending_kyc }}</p></div>
+  <div class="card p-4"><p class="text-xs text-gray-400">Restrictions Active</p><p class="text-2xl font-bold">{{ restricted_accounts }}</p></div>
+  <div class="card p-4"><p class="text-xs text-red-400">Fraud Alerts</p><p class="text-2xl font-bold {{ fraud_alerts|yesno:'text-red-600,' }}">{{ fraud_alerts }}</p></div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  <div class="card p-6">
+    <h3 class="font-semibold mb-3">My Appointments</h3>
+    <ul class="text-sm divide-y">
+      {% for a in appointments %}
+      <li class="py-2 flex justify-between"><span>{{ a.customer.get_full_name }}</span><span class="text-gray-400">{{ a.scheduled_at|date:"d M H:i" }}</span></li>
+      {% empty %}<li class="py-2 text-gray-400">No upcoming appointments.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card p-6">
+    <h3 class="font-semibold mb-3">Recent Manager Activity</h3>
+    <ul class="text-sm divide-y">
+      {% for e in recent_activity %}
+      <li class="py-2 flex justify-between"><span>{{ e.action }}</span><span class="text-gray-400 text-xs">{{ e.timestamp|date:"d M H:i" }}</span></li>
+      {% empty %}<li class="py-2 text-gray-400">No activity yet.</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

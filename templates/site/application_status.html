@@ -1,0 +1,32 @@
+{% extends "site/base.html" %}
+{% block title %}Application status {{ app.reference }}{% endblock %}
+{% block content %}
+<section class="max-w-xl mx-auto px-4 py-14 text-center">
+  <h1 class="text-3xl font-extrabold text-emerald-950">APPLICATION RECEIVED</h1>
+  <div class="card p-8 mt-8 text-left">
+    <dl class="text-sm divide-y">
+      <div class="py-2 flex justify-between"><dt class="text-gray-400">Application reference</dt><dd class="font-mono font-bold text-emerald-800">{{ app.reference }}</dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-gray-400">Applicant</dt><dd class="font-semibold">{{ app.full_name }}</dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-gray-400">Submitted</dt><dd>{{ app.submitted_at|date:"d M Y H:i" }}</dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-gray-400">Current status</dt>
+        <dd><span class="bg-emerald-100 text-emerald-800 rounded-full px-3 py-0.5 font-semibold text-xs">{{ app.status }}</span></dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-gray-400">Next step</dt><dd>{{ app.next_step_label }}</dd></div>
+    </dl>
+    {% if app.decision_reason %}<p class="mt-4 text-sm bg-amber-50 text-amber-800 rounded-xl p-3">{{ app.decision_reason }}</p>{% endif %}
+    {% if app.status == "ACCOUNT_CREATED" and app.temp_password %}
+    <div class="mt-5 bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm">
+      <p class="font-semibold text-emerald-900 mb-2">Welcome to Bankio — your temporary credentials</p>
+      <dl class="divide-y">
+        <div class="py-1.5 flex justify-between"><dt class="text-gray-500">Username / email</dt><dd class="font-semibold">{{ app.email }}</dd></div>
+        <div class="py-1.5 flex justify-between"><dt class="text-gray-500">Temporary password</dt><dd class="font-mono font-semibold text-emerald-800">{{ app.temp_password }}</dd></div>
+        <div class="py-1.5 flex justify-between"><dt class="text-gray-500">Sign in at</dt><dd><a href="/login/" class="text-emerald-700 underline">/login/</a></dd></div>
+      </dl>
+      <p class="mt-2 text-xs text-gray-400">Demo: credentials are shown here. You'll be asked to change your password after signing in.</p>
+    </div>
+    {% endif %}
+  </div>
+  <p class="mt-6 text-sm text-gray-500">Keep your application reference to check the status anytime at
+    <a href="/application/resume/" class="text-emerald-700 underline">Application Status</a>.</p>
+  <a href="/" class="btn-secondary mt-8 inline-block">Back to Home</a>
+</section>
+{% endblock %}

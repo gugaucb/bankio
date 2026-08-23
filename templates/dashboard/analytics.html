@@ -1,0 +1,38 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Analytics — Bankio{% endblock %}
+{% block page %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+  <div class="card p-5"><p class="text-xs text-gray-400">Income (30d)</p><p class="text-xl font-bold text-emerald-700">${{ metrics.income|floatformat:2 }}</p></div>
+  <div class="card p-5"><p class="text-xs text-gray-400">Expenses (30d)</p><p class="text-xl font-bold text-red-600">${{ metrics.expenses|floatformat:2 }}</p></div>
+  <div class="card p-5"><p class="text-xs text-gray-400">Net Worth</p><p class="text-xl font-bold text-emerald-900">${{ metrics.net_worth|floatformat:2 }}</p></div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  <div class="card p-6">
+    <h3 class="font-semibold mb-3">Monthly Outflow (6 months)</h3>
+    <canvas id="outChart" height="180"></canvas>
+  </div>
+  <div class="card p-6">
+    <h3 class="font-semibold mb-3">Top Destinations (90 days)</h3>
+    <ul class="divide-y divide-gray-50 text-sm">
+      {% for name, total in top_destinations %}
+      <li class="flex justify-between py-2.5"><span class="truncate mr-4">{{ name }}</span><span class="font-semibold text-red-600">−${{ total|floatformat:2 }}</span></li>
+      {% empty %}
+      <li class="py-6 text-center text-gray-400">No outflows in the period.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  new Chart(document.getElementById('outChart'), {
+    type: 'line',
+    data: {labels: {{ chart_labels|safe }},
+      datasets: [{data: {{ chart_data|safe }}, borderColor: '#0d5c46',
+        backgroundColor: 'rgba(13,92,70,.08)', fill: true, tension: .4, pointRadius: 3}]},
+    options: {plugins: {legend: {display: false}}, scales: {x: {grid: {display: false}}, y: {beginAtZero: true}}}
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "site/base.html" %}
+{% block title %}Review application {{ app.reference }}{% endblock %}
+{% block content %}
+<section class="max-w-xl mx-auto px-4 py-12">
+  <p class="text-sm text-gray-400 font-semibold">APPLICATION {{ app.reference }}</p>
+  <h1 class="text-2xl font-bold text-emerald-950 mt-1">Review & consents</h1>
+  <div class="mt-4 h-2 bg-emerald-100 rounded-full overflow-hidden">
+    <div class="h-full bg-emerald-700 rounded-full" style="width:100%"></div>
+  </div>
+
+  <div class="card p-6 mt-6 text-sm divide-y">
+    {% for label, value in review_fields %}
+    <div class="py-2 flex justify-between gap-4"><span class="text-gray-400">{{ label }}</span><span class="font-semibold text-right">{{ value }}</span></div>
+    {% endfor %}
+  </div>
+
+  <form method="post" action="/application/submit/" class="card p-6 mt-6 space-y-3 text-sm">
+    {% csrf_token %}
+    <input type="hidden" name="idempotency_key" value="{{ app.reference }}">
+    <label class="flex items-start gap-2"><input type="checkbox" required class="mt-0.5 rounded">
+      I confirm the information provided is accurate and consent to identity verification and KYC checks.</label>
+    <label class="flex items-start gap-2"><input type="checkbox" required class="mt-0.5 rounded">
+      I accept the Bankio Terms, Privacy Policy and Cookie Policy (demo documents).</label>
+    <button class="btn-primary w-full">Submit Application</button>
+  </form>
+</section>
+{% endblock %}

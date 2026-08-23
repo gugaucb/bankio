@@ -1,0 +1,5 @@
+{% if app.state == 'ACTIVE' %}
+<div class="card p-4 bg-emerald-50 text-emerald-900 text-sm rounded-2xl mb-4">✓ Account opened: <b>{{ app.account.account_number }}</b> ({{ app.product_type }})</div>
+{% else %}
+<div class="card p-4 bg-amber-50 text-amber-900 text-sm rounded-2xl mb-4">⧗ Application {{ app.pk }} status: <b>{{ app.state }}</b>{% if app.state == 'PENDING_KYC' %} — customer KYC verification pending.{% endif %}{% if app.state == 'PENDING_APPROVAL' %} — requires higher approval.{% endif %}</div>
+{% endif %}

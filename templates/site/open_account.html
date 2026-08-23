@@ -1,0 +1,22 @@
+{% extends "site/base.html" %}
+{% block title %}Open your Bankio account{% endblock %}
+{% block content %}
+<section class="bg-gradient-to-b from-[#f2f8f5] py-16">
+  <div class="max-w-3xl mx-auto px-4 text-center">
+    <h1 class="text-4xl font-extrabold text-emerald-950">Open your Bankio account</h1>
+    <div class="mt-8 grid sm:grid-cols-2 gap-4 text-left text-sm max-w-xl mx-auto">
+      <div class="card p-4">✅ Simple application</div>
+      <div class="card p-4">🔐 Secure identity verification</div>
+      <div class="card p-4">💻 Digital onboarding</div>
+      <div class="card p-4">📍 Track your application online</div>
+    </div>
+    <form method="post" action="/open-account/" class="mt-10">
+      {% csrf_token %}
+      <button class="btn-primary text-lg">Start Application</button>
+    </form>
+    <p class="mt-6 text-sm text-gray-500">
+      Already started? <a href="/application/resume/" class="text-emerald-700 underline">Resume your application</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

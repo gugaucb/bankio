@@ -1,0 +1,16 @@
+{% extends "manager/base.html" %}
+{% block title %}Restrictions — Bankio Ops{% endblock %}
+{% block page %}
+<h1 class="text-xl font-bold mb-5">Active Restrictions</h1>
+<div class="card overflow-hidden max-w-4xl">
+<table class="w-full text-sm">
+<thead><tr class="text-left text-xs uppercase text-gray-400 bg-gray-50"><th class="px-4 py-2">Account</th><th>Customer</th><th>Type</th><th>Reason</th></tr></thead>
+<tbody>{% for r in active %}
+<tr class="border-t"><td class="px-4 py-2 font-mono text-xs">{{ r.account.account_number }}</td>
+<td>{{ r.account.customer.get_full_name }}</td>
+<td><span class="px-2 py-0.5 rounded-lg text-xs bg-red-100 text-red-700">{{ r.restriction_type }}</span></td>
+<td class="text-gray-500">{{ r.reason }}</td></tr>
+{% empty %}<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No active restrictions.</td></tr>{% endfor %}
+</tbody></table></div>
+<p class="text-xs text-gray-400 mt-3">AML_HOLD and LEGAL_HOLD can only be removed by the Compliance role.</p>
+{% endblock %}

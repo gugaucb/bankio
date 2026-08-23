@@ -1,0 +1,52 @@
+{% extends "manager/base.html" %}
+{% block title %}Applications — Bankio Ops{% endblock %}
+{% block page %}
+<h1 class="text-xl font-bold mb-1">Public Account Applications</h1>
+<p class="text-sm text-gray-500 mb-5">Digital onboarding queue — decisions follow your authority level.</p>
+
+<div class="card p-6">
+  <h3 class="font-semibold mb-3">Pending review</h3>
+  <div class="overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="text-left text-xs text-gray-400 uppercase">
+      <tr><th class="py-2">Applicant</th><th>Reference</th><th>Risk</th><th>Submitted</th><th>Status</th><th>Decision</th></tr>
+    </thead>
+    <tbody class="divide-y">
+      {% for r, a in pending %}
+      <tr>
+        <td class="py-2 font-semibold">{{ a.full_name|default:"—" }}<br><span class="text-xs text-gray-400 font-normal">{{ a.email }}</span></td>
+        <td class="font-mono text-xs">{{ r.payload.reference }}</td>
+        <td><span class="rounded-full px-2 py-0.5 text-xs bg-emerald-100 text-emerald-800">{{ a.risk_level }}</span></td>
+        <td>{{ r.created_at|date:"d M H:i" }}</td>
+        <td>{{ a.status }}</td>
+        <td>
+          {% if r.status == "PENDING" %}
+          <form method="post" action="/manage/applications/decide/" class="flex gap-2 items-center">
+            {% csrf_token %}
+            <input type="hidden" name="approval_id" value="{{ r.pk }}">
+            <button name="decision" value="approve" class="text-xs font-semibold text-emerald-700 hover:underline">Approve</button>
+            <button name="decision" value="reject" class="text-xs font-semibold text-red-600 hover:underline">Reject</button>
+          </form>
+          {% else %}{{ r.status }}{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="py-4 text-gray-400">No pending applications.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card p-6 mt-6">
+  <h3 class="font-semibold mb-3">Recently decided</h3>
+  <ul class="text-sm divide-y">
+    {% for a in decided %}
+    <li class="py-2 flex justify-between"><span class="font-mono text-xs">{{ a.reference }} — {{ a.full_name }}</span>
+      <span class="{% if a.status == 'REJECTED' %}text-red-600{% else %}text-emerald-700{% endif %} font-semibold">{{ a.status }}</span></li>
+    {% empty %}
+    <li class="py-2 text-gray-400">Nothing yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

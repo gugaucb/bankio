@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Sign in — Bankio{% endblock %}
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4" x-data="{show:false}">
+  <div class="card w-full max-w-md p-8">
+    <div class="flex items-center gap-2 mb-8">
+      <div class="w-9 h-9 rounded-xl bg-emerald-800 flex items-center justify-center text-white font-bold">B</div>
+      <span class="text-xl font-bold text-emerald-900 tracking-tight">Bankio</span>
+    </div>
+    <h1 class="text-2xl font-bold mb-1">Welcome back</h1>
+    <p class="text-sm text-gray-500 mb-6">Sign in to your Bankio account</p>
+    {% if form.non_field_errors %}<div class="mb-4 text-sm text-red-600 bg-red-50 rounded-lg p-3">{{ form.non_field_errors.0 }}</div>{% endif %}
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      <input type="text" name="username" placeholder="Username" required
+             class="w-full rounded-xl border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+      <input type="password" name="password" placeholder="Password" required x-data show toggle
+             class="w-full rounded-xl border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+      <button type="submit" class="btn-primary w-full">Sign in</button>
+    </form>
+    <p class="text-xs text-gray-400 mt-6">Demo: aubrey.sabina0 / Customer!2026 — admin / Bankio!2026</p>
+  </div>
+</div>
+{% endblock %}

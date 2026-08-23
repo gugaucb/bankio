@@ -1,0 +1,8 @@
+{% if error %}
+<div class="card p-4 border border-red-100 bg-red-50 text-red-700 text-sm rounded-2xl mb-5">✕ {{ error }}</div>
+{% else %}
+<div class="card p-4 border border-emerald-100 bg-emerald-50 text-emerald-900 text-sm rounded-2xl mb-5">
+  ✓ Transfer {{ transfer.reference }} for ${{ transfer.amount|floatformat:2 }} — status:
+  <strong>{{ transfer.status }}</strong>{% if not created %} (idempotent retry){% endif %}
+</div>
+{% endif %}

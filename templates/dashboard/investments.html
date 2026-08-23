@@ -1,0 +1,52 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Investments — Bankio{% endblock %}
+{% block page %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+  <div class="card p-5"><p class="text-xs text-gray-400">Market Value</p><p class="text-xl font-bold text-emerald-900">${{ total_value|floatformat:2 }}</p></div>
+  <div class="card p-5"><p class="text-xs text-gray-400">Invested (cost)</p><p class="text-xl font-bold">${{ total_cost|floatformat:2 }}</p></div>
+  <div class="card p-5"><p class="text-xs text-gray-400">Unrealized P/L</p>
+    <p class="text-xl font-bold {% if pl >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">
+      {% if pl >= 0 %}+{% endif %}${{ pl|floatformat:2 }} ({{ pl_pct|floatformat:1 }}%)</p></div>
+</div>
+
+<div class="card overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead><tr class="text-left text-xs text-gray-400 uppercase">
+      <th class="px-6 py-3">Instrument</th><th class="px-6 py-3">Qty</th>
+      <th class="px-6 py-3">Avg price</th><th class="px-6 py-3">Last price</th>
+      <th class="px-6 py-3 text-right">Market value</th><th class="px-6 py-3 text-right">P/L</th>
+    </tr></thead>
+    <tbody class="divide-y divide-gray-50">
+      {% for r in pos_rows %}
+      <tr>
+        <td class="px-6 py-3 font-semibold">{{ r.p.instrument.symbol }} <span class="font-normal text-gray-400">{{ r.p.instrument.name }}</span></td>
+        <td class="px-6 py-3">{{ r.p.quantity|floatformat:"-4" }}</td>
+        <td class="px-6 py-3">${{ r.p.avg_price|floatformat:2 }}</td>
+        <td class="px-6 py-3">${{ r.p.instrument.last_price|floatformat:2 }}</td>
+        <td class="px-6 py-3 text-right font-semibold">${{ r.p.market_value|floatformat:2 }}</td>
+        <td class="px-6 py-3 text-right {% if r.pl >= 0 %}text-emerald-700{% else %}text-red-600{% endif %}">
+          {% if r.pl >= 0 %}+{% else %}−{% endif %}${{ r.pl_abs|floatformat:2 }} ({{ r.pl_pct|floatformat:1 }}%)
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="px-6 py-10 text-center text-gray-400">No positions yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h3 class="font-semibold mt-8 mb-3">Order History</h3>
+<div class="card divide-y divide-gray-50">
+  {% for o in orders %}
+  <div class="flex items-center justify-between px-6 py-3 text-sm">
+    <div>
+      <p class="font-medium"><span class="{% if o.side == 'BUY' %}text-emerald-700{% else %}text-red-600{% endif %}">{{ o.side }}</span> {{ o.instrument.symbol }}</p>
+      <p class="text-xs text-gray-400">{{ o.created_at|date:"d M Y, H:i" }} · {{ o.quantity|floatformat:"-4" }} @ ${{ o.price|floatformat:2 }} · {{ o.idempotency_key }}</p>
+    </div>
+    <span class="font-semibold">${{ o.price|floatformat:2 }}</span>
+  </div>
+  {% empty %}
+  <div class="px-6 py-8 text-center text-sm text-gray-400">No orders yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

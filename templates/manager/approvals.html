@@ -1,0 +1,30 @@
+{% extends "manager/base.html" %}
+{% block title %}Approvals — Bankio Ops{% endblock %}
+{% block page %}
+<h1 class="text-xl font-bold mb-5">Approval Queue (maker-checker)</h1>
+<div class="space-y-3 max-w-3xl">
+{% for a in pending %}
+  <div class="card p-5 flex flex-wrap items-center justify-between gap-3">
+    <div class="text-sm">
+      <p class="font-semibold">{{ a.get_operation_type_display }} {% if a.amount %}· ${{ a.amount|floatformat:2 }}{% endif %}</p>
+      <p class="text-gray-500 text-xs">Requested by {{ a.requested_by.get_full_name }} · needs {{ a.required_level }} · {{ a.created_at|date:"d M H:i" }}</p>
+      <p class="text-gray-400 text-xs mt-1">{{ a.reason }}</p>
+    </div>
+    <form method="post" action="/manage/approvals/decide/" x-data class="flex gap-2"
+          onsubmit="return confirm('Confirm this decision? This action is audited.');">
+      {% csrf_token %}
+      <input type="hidden" name="approval_id" value="{{ a.pk }}">
+      <button name="decision" value="approve" class="btn-primary !py-1.5 text-xs">APPROVE</button>
+      <button name="decision" value="reject" @click="setTimeout(()=>{const i=prompt('Rejection reason:');if(i!==null){const f=this.closest('form');const inp=document.createElement('input');inp.type='hidden';inp.name='rejection_reason';inp.value=i;f.appendChild(inp);}},0)" class="px-3 py-1.5 text-xs rounded-xl border border-gray-200">REJECT</button>
+    </form>
+  </div>
+{% empty %}<div class="card p-6 text-sm text-gray-400">No pending approvals.</div>{% endfor %}
+</div>
+<h2 class="text-sm font-semibold uppercase text-gray-400 mt-8 mb-2">Recently decided</h2>
+<table class="w-full card p-4 text-sm"><tbody>
+{% for a in decided %}<tr class="border-t"><td class="py-2">{{ a.operation_type }} #{{ a.resource_id }}</td><td>{{ a.requested_by.username }}</td>
+<td><span class="{% if a.status == 'APPROVED' %}text-emerald-700{% else %}text-red-600{% endif %} font-semibold">{{ a.status }}</span></td>
+<td class="text-gray-400 text-xs">{{ a.reviewed_by|default:"—" }} · {{ a.reviewed_at|date:"d M H:i" }}</td></tr>
+{% endfor %}
+</tbody></table>
+{% endblock %}
