@@ -8,7 +8,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | # | Task | Branch | Status | Judge | Merged |
 |---|------|--------|--------|-------|--------|
 | 01 | Discovery: mapa de superfície de risco | (direto no main) | DONE | PASS | SIM (1524c27) |
-| 02 | Modelos de domínio fraud | feat/fraud-02-domain-model | pending | | |
+| 02 | Modelos de domínio fraud | feat/fraud-02-domain-model | DONE | PASS | SIM (merge ad6281f) |
 | 03 | RiskContext | feat/fraud-03-context | pending | | |
 | 04 | Signal registry | feat/fraud-04-signals | pending | | |
 | 05 | Velocity signals | feat/fraud-05-velocity | pending | | |
@@ -65,6 +65,10 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 - D-F04: signals de mudança de contato marcados N/A (endpoints inexistentes).
 
 ## Sessões
+### Task 02 — Domain model
+- apps/fraud: RiskEvaluation (decision/risk_level/mode/versioned), RiskSignal (fato único por evaluation), RiskRule (rule_id+version únicos, lifecycle DRAFT..RETIRED), FraudAlert (dedup_key), FraudCase (close exige decision_reason — check constraint).
+- Lição: IntegrityError só é wrapped dentro de transaction.atomic() (psycopg error cru fora dele).
+- Regressão: 223 green.
 ### Sessão 1 — Task 01 Discovery
 - Git pre-flight: main limpa @41dee3b.
 - Mapa de risco salvo em docs/fraud/risk-surface-map.md.
