@@ -45,7 +45,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 > manage_policies (FRAUD_MANAGER); (2) challenge material_hash hashed only dict
 > KEYS, ignoring values → _facts_digest over sorted k=v pairs. Existing shadow-mode
 > test updated to use FRAUD_MANAGER actor (stronger, not weaker).
-| 34 | Shadow backtest run | test/fraud-34-shadow-backtest | pending | | |
+| 34 | Shadow backtest run | feat/fraud-34-shadow-backtest | DONE | PASS | SIM |
 | 35 | Challenge-only mode | feat/fraud-35-challenge | pending | | |
 | 36 | Medição challenge | test/fraud-36-measure | pending | | |
 | 37 | Limited enforcement | feat/fraud-37-limited | pending | | |
