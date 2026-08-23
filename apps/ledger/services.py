@@ -16,8 +16,11 @@ def get_or_create_account(code, name, type="LIABILITY", currency="USD", is_custo
 
 
 def account_balance(ledger_account):
-    """Balance from ledger activity only — never a stored mutable column."""
-    agg = LedgerEntry.objects.filter(account=ledger_account).aggregate(
+    """Balance from POSTED ledger activity only — never a stored mutable column.
+    Draft journals are uncommitted financial facts and must not affect balances."""
+    agg = LedgerEntry.objects.filter(
+        account=ledger_account, journal__status=JournalEntry.Status.POSTED
+    ).aggregate(
         debits=Sum("amount", filter=Q(side="DEBIT")), credits=Sum("amount", filter=Q(side="CREDIT"))
     )
     debits = agg["debits"] or Decimal("0")
