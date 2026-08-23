@@ -27,7 +27,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 18 | Rule lifecycle management | feat/fraud-18-rule-mgmt | DONE | PASS | SIM |
 | 19 | Backtesting/replay | feat/fraud-19-backtesting | DONE | PASS | SIM |
 | 20 | Behavior baselines | feat/fraud-20-baselines | DONE | PASS | SIM |
-| 21 | Device signals | feat/fraud-21-device | pending | | |
+| 21 | Device signals | feat/fraud-21-device | DONE | PASS | SIM |
 | 22 | Beneficiary signals | feat/fraud-22-beneficiary | pending | | |
 | 23 | Auth risk | feat/fraud-23-auth-risk | pending | | |
 | 24 | ATO correlation | feat/fraud-24-ato | pending | | |
