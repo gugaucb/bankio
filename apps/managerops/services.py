@@ -204,6 +204,7 @@ def request_restriction(*, manager, account_id, restriction_type, reason, requir
     prof = get_manager_profile(manager)
     account = Account.objects.get(pk=account_id)
     assert_customer_access(prof, account.customer.customer_profile)
+    _manager_risk_observation(manager, "MANAGER_RESTRICTION")
     if restriction_type in RESTRICTION_MIN_RANK and RESTRICTION_MIN_RANK[restriction_type] > 4:
         raise RestrictionError("COMPLIANCE_ONLY_RESTRICTION")
     existing = AccountRestriction.objects.filter(account=account, restriction_type=restriction_type, active=True).exists()
@@ -313,6 +314,7 @@ def request_limit_change(*, manager, account_id, new_limit, reason=""):
     prof = get_manager_profile(manager)
     account = Account.objects.select_for_update().get(pk=account_id)
     assert_customer_access(prof, account.customer.customer_profile)
+    _manager_risk_observation(manager, "MANAGER_LIMIT_CHANGE")
     new_limit = Decimal(str(new_limit))
     if new_limit <= 0:
         raise ValueError("INVALID_LIMIT")
@@ -342,6 +344,7 @@ def request_account_closure(*, manager, account_id, reason=""):
     prof = get_manager_profile(manager)
     account = Account.objects.select_for_update().get(pk=account_id)
     assert_customer_access(prof, account.customer.customer_profile)
+    _manager_risk_observation(manager, "MANAGER_CLOSURE")
     if account.current_balance != Decimal("0"):
         raise ValueError("BALANCE_NOT_ZERO")
     if account.restrictions.filter(active=True).exists():
@@ -353,3 +356,20 @@ def request_account_closure(*, manager, account_id, reason=""):
     audit(actor=manager, action="ACCOUNT_CLOSURE_REQUESTED", resource=account,
           metadata={"reason": reason, "approved_inline": True})
     return account
+
+
+# ---------------------------------------------------------------- risk hooks
+
+def _manager_risk_observation(manager, operation):
+    """Shadow risk observation on sensitive manager operations (spec PART 29);
+    never fatal in SHADOW — enforcement wiring comes with the cutover."""
+    from apps.fraud.context import RiskContext
+    from apps.fraud.engine import evaluate_operation
+
+    ctx = RiskContext(operation_type=operation, actor=manager, customer=None)
+    try:
+        return evaluate_operation(ctx)
+    except Exception as exc:
+        audit(action="RISK_EVALUATION_ERROR", actor=manager,
+              metadata={"scope": "manager_op", "operation": operation, "error": str(exc)[:200]})
+        return None
