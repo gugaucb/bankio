@@ -13,9 +13,9 @@ Master plan: immutable double-entry ledger → invariants → reversals/idempote
 | # | Task | Branch | Status | Judge | Merged |
 |---|------|--------|--------|-------|--------|
 | 00 | Baseline commit of existing app | — | DONE | PASS | main |
-| 01 | Discovery (money mutation map) | feat/ledger-01-discovery | IN_PROGRESS | — | — |
-| 02 | Ledger core model hardening (DB constraints) | feat/ledger-02-core-model | TODO | — | — |
-| 03 | Atomic posting engine + property tests | feat/ledger-03-posting-engine | TODO | — | — |
+| 01 | Discovery (money mutation map) | feat/ledger-01-discovery | DONE (no-diff; content in baseline commit) | PASS | main (baseline) |
+| 02 | Ledger core model hardening (DB constraints) | feat/ledger-02-core-model | DONE | PASS | main |
+| 03 | Atomic posting engine + property tests | feat/ledger-03-posting-engine | DONE | PASS | main |
 | 04 | Balance projection & rebuild test | feat/ledger-04-balance-projection | TODO | — | — |
 | 05 | Money boundary audit (module by module) | feat/ledger-05-money-boundary | TODO | — | — |
 | 06 | Immutability & reversals | feat/ledger-06-immutability | TODO | — | — |
@@ -54,6 +54,10 @@ Tags planned: `bankio-ledger-core-v1`, `bankio-ledger-reconciled-v1`, `bankio-le
   - `Account.blocked_amount` is a stored non-ledger field — candidate for hold-ledger modeling or explicit projection policy.
 
 ## Discovery Summary (Task 01)
+
+### Session log (2026-08-23)
+- Task 02 merged: DB CHECK constraints + Postgres triggers (balanced-post trigger, posted-entry immutability triggers). 9 new bypass-proof tests. Lesson: `RunSQL` needs SQL strings, not functions.
+- Task 03 merged: `LedgerAccount.status` (ACTIVE/BLOCKED/CLOSED), `JournalEntry.currency`; `post_journal` rejects non-active accounts, mixed currencies, invalid sides, empty journals. Property test for multi-line journals. 132 tests green on main.
 
 Ledger models already present (`apps/ledger/models.py`): LedgerAccount (ASSET/LIABILITY/INCOME/EXPENSE/EQUITY), JournalEntry (DRAFT→POSTED, unique reference, reverses FK), LedgerEntry (DEBIT/CREDIT, positive Decimal(19,2)).
 
