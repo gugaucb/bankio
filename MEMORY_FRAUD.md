@@ -14,7 +14,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 05 | Velocity signals | feat/fraud-05-velocity | DONE | PASS | SIM (cf91cdd) |
 | 06 | Rule engine | feat/fraud-06-rule-engine | DONE | PASS | SIM (7f408e8) |
 | 07 | Rule versioning | feat/fraud-07-rule-versioning | DONE | PASS | SIM (f83cb8f) |
-| 08 | Score engine | feat/fraud-08-score-engine | pending | | |
+| 08 | Score engine | feat/fraud-08-score-engine | DONE | PASS | SIM (12e329f) |
 | 09 | Policy engine | feat/fraud-09-policy-engine | pending | | |
 | 10 | Decision snapshot | feat/fraud-10-snapshot | pending | | |
 | 11 | Shadow mode + engine modes | feat/fraud-11-shadow-mode | pending | | |
