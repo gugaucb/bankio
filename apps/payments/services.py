@@ -34,6 +34,10 @@ def pay_bill(*, actor, account_id, bill_id, idempotency_key=None):
     if bill.payments.filter(status="COMPLETED").exists():
         raise PaymentError("BILL_ALREADY_PAID")
 
+    # shadow risk observation before irreversible settlement (spec PART 26);
+    # non-fatal in SHADOW — enforcement wiring comes with the cutover task
+    _payment_risk_observation(actor, account, amount, bill, key)
+
     bank_income = ledger.get_or_create_account("4000-PAYMENT-INCOME", "Payment Settlement Clearing", type="ASSET")
     journal = ledger.post_journal(
         reference=f"PAY-{uuid.uuid4().hex[:12].upper()}",
@@ -45,3 +49,26 @@ def pay_bill(*, actor, account_id, bill_id, idempotency_key=None):
         idempotency_key=key, journal=journal, created_by=actor,
     )
     return payment, True
+
+
+def _payment_risk_observation(actor, account, amount, bill, idempotency_key):
+    """Run the fraud engine on the payment; never fatal in SHADOW."""
+    from apps.fraud.context import RiskContext
+    from apps.fraud.engine import evaluate_operation
+
+    ctx = RiskContext(
+        operation_type="BILL_PAYMENT",
+        actor=actor,
+        customer=account.customer,
+        amount=amount,
+        currency=account.currency,
+        account_ref=str(account.pk),
+        idempotency_key=idempotency_key,
+    )
+    try:
+        return evaluate_operation(ctx)
+    except Exception as exc:
+        from apps.audit.services import record as audit
+
+        audit(action="RISK_EVALUATION_ERROR", metadata={"scope": "bill_payment", "error": str(exc)[:200]})
+        return None
