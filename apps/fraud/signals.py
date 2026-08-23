@@ -105,3 +105,39 @@ def failed_login_count(ctx, user=None):
 @register("PASSWORD_CHANGED_RECENTLY_24H")
 def password_changed_recently(ctx, user=None):
     return _recent_audit(user or ctx.actor, "PASSWORD_CHANGED").exists()
+
+
+# --- device risk signals (spec PART 18) --------------------------------------
+
+@register("DEVICE_LAST_SEEN_HOURS")
+def device_last_seen_hours(ctx, user=None):
+    dev = _known_device(user or ctx.actor, ctx.device_id)
+    if dev is None:
+        return None
+    return round((ctx.timestamp - dev.last_seen).total_seconds() / 3600, 2)
+
+
+@register("DEVICE_USER_COUNT")
+def device_user_count(ctx, user=None):
+    """How many accounts this device fingerprint has been seen on.
+    Shared credentials / fraud farm indicator."""
+    if not ctx.device_id:
+        return None
+    from apps.identity.models import Device
+
+    return Device.objects.filter(device_id=ctx.device_id).values("user").distinct().count()
+
+
+@register("DEVICE_IP_FAILED_LOGINS_24H")
+def device_ip_failed_logins(ctx):
+    """Failed logins from the same IP in the last 24h. AuditLog stores the
+    raw user-agent string, not the device hash, so IP is the join key."""
+    from apps.audit.models import AuditLog
+
+    if not ctx.ip:
+        return 0
+    return AuditLog.objects.filter(
+        action="LOGIN_FAILED",
+        ip_address=ctx.ip,
+        timestamp__gte=timezone.now() - timezone.timedelta(hours=24),
+    ).count()
