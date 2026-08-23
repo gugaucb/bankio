@@ -111,6 +111,10 @@ def purchase(card_id, merchant, amount_raw, online=False, international=False, a
     if spent + amount > card.daily_limit:
         decline("DAILY_LIMIT_EXCEEDED")
 
+    # shadow risk observation on every approved-so-far purchase; hard controls
+    # above remain decisive regardless of score (spec PART 21)
+    _card_risk_observation(card, merchant, amount, online, international)
+
     account = card.account
     if card.type == "DEBIT_CARD":
         if account.status != AccountStatus.ACTIVE:
@@ -241,3 +245,29 @@ def decide_card_request(req, approver, approve: bool, approved_limit=None, reaso
     req.decided_at = timezone.now()
     req.save()
     return req
+
+
+def _card_risk_observation(card, merchant, amount, online, international):
+    """Run the fraud engine in observation mode; never declines a purchase.
+    Engine errors are audited and non-fatal — card business controls above
+    are the authoritative decline path."""
+    from apps.fraud.context import RiskContext
+    from apps.fraud.engine import evaluate_operation
+
+    ctx = RiskContext(
+        operation_type="CARD_PURCHASE",
+        actor=card.account.customer,
+        customer=card.account.customer,
+        amount=amount,
+        currency="USD",
+        account_ref=str(card.pk),
+        idempotency_key=f"card:{card.pk}:{merchant}",
+    )
+    try:
+        return evaluate_operation(ctx, card=card)
+    except Exception as exc:
+        from apps.audit.services import record as audit
+
+        audit(action="RISK_EVALUATION_ERROR", metadata={"scope": "card_purchase", "error": str(exc)[:200]})
+        return None
+
