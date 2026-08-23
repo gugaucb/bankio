@@ -98,6 +98,11 @@ def post_journal(reference, description, lines, posted_at=None, currency=None):
     journal.save(update_fields=[
         "status", "posted_at", "payload_hash", "previous_entry_hash", "chain_hash",
     ])
+
+    from apps.audit.services import record as audit
+
+    audit(action="JOURNAL_POSTED", resource=journal,
+          metadata={"reference": journal.reference, "amount": str(debits)})
     return journal
 
 
@@ -116,4 +121,9 @@ def reverse_journal(original, reference=None, description=""):
     reversal = post_journal(ref, description or f"Reversal of {original.reference}", lines)
     reversal.reverses = original
     reversal.save(update_fields=["reverses"])
+
+    from apps.audit.services import record as audit
+
+    audit(action="JOURNAL_REVERSED", resource=original,
+          metadata={"reversal": reversal.reference})
     return reversal
