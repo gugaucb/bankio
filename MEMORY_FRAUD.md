@@ -58,7 +58,10 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 38 | Medição false positives | test/fraud-38-fp-measure | DONE | PASS | SIM |
 | 39 | Full enforcement | feat/fraud-39-enforcement | DONE | PASS | SIM |
 | 40 | Regressão completa Bankio | test/fraud-40-regression | DONE | PASS | SIM |
-| 41 | Judge final | — | pending | | |
+| 41 | Judge final | — | DONE | ACCEPTED | — |
+
+> Acceptance report: docs/fraud/acceptance-report.md. All 41 tasks complete;
+> 405 tests green; 4 milestone tags created.
 
 ## Tags alvo
 - `bankio-fraud-engine-v1` — engine determinística aceita
