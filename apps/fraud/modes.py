@@ -30,6 +30,11 @@ def get_mode() -> str:
 def set_mode(new_mode, actor=None):
     if new_mode not in RiskEvaluation.EngineMode.values:
         raise FraudModeError(f"Unknown fraud mode {new_mode!r}")
+    if actor is not None and not getattr(actor, "is_superuser", False):
+        from .rbac import FraudPermissionDenied, has_permission
+
+        if not has_permission(actor, "manage_policies"):
+            raise FraudPermissionDenied("manage_policies required")
     old = get_mode()
     row, _ = FraudEngineSetting.objects.update_or_create(key=MODE_KEY, defaults={"value": new_mode})
     audit(
