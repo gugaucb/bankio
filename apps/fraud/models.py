@@ -174,6 +174,17 @@ class FraudAlert(models.Model):
         return f"ALERT-{self.pk} {self.alert_type}/{self.severity} {self.status}"
 
 
+class FraudEngineSetting(models.Model):
+    """Runtime-controlled engine configuration (mode switches are audited)."""
+
+    key = models.CharField(max_length=64, unique=True)
+    value = models.CharField(max_length=40)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.key}={self.value}"
+
+
 def new_case_reference():
     return uuid.uuid4().hex[:16].upper()
 
