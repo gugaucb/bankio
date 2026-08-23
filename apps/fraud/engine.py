@@ -14,9 +14,9 @@ from .models import RiskEvaluation, RiskSignal
 
 
 def current_engine_mode():
-    from django.conf import settings
+    from . import modes
 
-    return getattr(settings, "FRAUD_MODE", None) or RiskEvaluation.EngineMode.SHADOW
+    return modes.get_mode()
 
 
 def evaluate_operation(ctx: RiskContext, **domain_objects) -> RiskEvaluation:
