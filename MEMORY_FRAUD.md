@@ -33,7 +33,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 24 | ATO correlation | feat/fraud-24-ato | DONE | PASS | SIM |
 | 25 | Card integration | feat/fraud-25-cards | DONE | PASS | SIM |
 | 26 | Payments integration | feat/fraud-26-payments | DONE | PASS | SIM |
-| 27 | Sensitive profile changes | feat/fraud-27-profile | pending | | |
+| 27 | Sensitive profile changes | feat/fraud-27-profile | DONE | PASS | SIM |
 | 28 | Account opening | feat/fraud-28-opening | pending | | |
 | 29 | Manager operations | feat/fraud-29-manager | pending | | |
 | 30 | Insider risk | feat/fraud-30-insider | pending | | |
