@@ -61,7 +61,7 @@ def seal_batch() -> LedgerProofBatch | None:
     manifest_bytes = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
     signature = signer.sign(manifest_bytes)
 
-    return LedgerProofBatch.objects.create(
+    batch = LedgerProofBatch.objects.create(
         sequence=sequence,
         first_journal_id=selected[0].id,
         last_journal_id=selected[-1].id,
@@ -75,6 +75,12 @@ def seal_batch() -> LedgerProofBatch | None:
         signature=signature,
         batch_manifest_hash=canonical.chain_hash(root, _manifest_digest(manifest)),
     )
+
+    from apps.audit.services import record as audit
+
+    audit(action="PROOF_BATCH_SEALED", resource=batch,
+          metadata={"sequence": sequence, "root": root, "entries": len(selected)})
+    return batch
 
 
 def _manifest_digest(manifest: dict) -> str:
