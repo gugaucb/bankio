@@ -31,7 +31,7 @@ Protocolo: DISCOVER → CRITÉRIOS → BRANCH `feat/fraud-XX-*` → IMPLEMENT �
 | 22 | Beneficiary signals | feat/fraud-22-beneficiary | DONE | PASS | SIM |
 | 23 | Auth risk | feat/fraud-23-auth-risk | DONE | PASS | SIM |
 | 24 | ATO correlation | feat/fraud-24-ato | DONE | PASS | SIM |
-| 25 | Card integration | feat/fraud-25-cards | pending | | |
+| 25 | Card integration | feat/fraud-25-cards | DONE | PASS | SIM |
 | 26 | Payments integration | feat/fraud-26-payments | pending | | |
 | 27 | Sensitive profile changes | feat/fraud-27-profile | pending | | |
 | 28 | Account opening | feat/fraud-28-opening | pending | | |
