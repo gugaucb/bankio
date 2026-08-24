@@ -40,11 +40,18 @@ def transfer_list_create(request):
                 return render(request, "transfers/_result.html", {"transfer": transfer, "created": created})
             return redirect("transfers")
         except (TransferError, ValueError, Account.DoesNotExist) as e:
+            step_up = None
+            facts = getattr(e, "facts", None)
+            if getattr(e, "code", "") == "STEP_UP_REQUIRED" and facts:
+                # panel carries the CANONICAL material facts used at issuance;
+                # they are re-validated against the material hash on confirm
+                step_up = {"challenge_id": e.challenge_id, **facts}
+            ctx = {"accounts": accounts, "beneficiaries": beneficiaries,
+                   "transfers": transfers, "error": str(e), "step_up": step_up}
             if request.headers.get("HX-Request"):
-                return render(request, "transfers/_result.html", {"error": str(e)}, status=400)
-            return render(request, "transfers/index.html",
-                          {"accounts": accounts, "beneficiaries": beneficiaries,
-                            "transfers": transfers, "error": str(e)}, status=400)
+                return render(request, "transfers/_result.html",
+                              {**ctx, "created": False}, status=400)
+            return render(request, "transfers/index.html", ctx, status=400)
 
     return render(request, "transfers/index.html", {
         "accounts": accounts, "beneficiaries": beneficiaries, "transfers": transfers,

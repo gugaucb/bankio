@@ -64,3 +64,28 @@ def bob(user_factory, account_factory):
     Customer.objects.create(user=u, customer_number="CUST-T2")
     u.checking = account_factory(u, "500.00")
     return u
+
+
+@pytest.fixture
+def accounts_setup(db, django_user_model):
+    """Sender + receiver with funded ledger-backed accounts."""
+    from uuid import uuid4
+
+    sender = make_user("su-sender", password="x")
+    receiver = make_user("su-receiver", password="x")
+    cash = ledger.get_or_create_account(f"SU-CASH-{uuid4().hex[:6]}", "Cash", type="ASSET")
+    src = dst = None
+    for user, amount in ((sender, "5000.00"), (receiver, "100.00")):
+        la = ledger.get_or_create_account(
+            f"2001-SU-{user.username}", f"Deposit {user.username}", is_customer=True)
+        acct = Account.objects.create(customer=user, account_number=f"87{user.pk:010d}",
+                                      ledger_account=la)
+        ledger.post_journal(
+            f"SU-DEP-{uuid4().hex[:8]}", "dep",
+            [(cash, "DEBIT", Decimal(amount)), (la, "CREDIT", Decimal(amount))],
+        )
+        if user is sender:
+            src = acct
+        else:
+            dst = acct
+    return sender, receiver, src, dst

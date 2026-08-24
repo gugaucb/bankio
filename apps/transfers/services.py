@@ -83,8 +83,43 @@ def _risk_evaluation(actor, source, amount, destination, beneficiary, idempotenc
         return None
 
 
+def _transfer_facts(source, amount, destination, beneficiary, key):
+    """Material facts bound into the challenge hash. ANY change after
+    issuance invalidates the challenge (INV 5)."""
+    return {
+        "amount": str(amount),
+        "beneficiary": str(beneficiary.pk if beneficiary else ""),
+        "source_account": str(source.pk),
+        "destination_account": str(destination.pk if destination else ""),
+        "idempotency_key": key,
+    }
+
+
+def resume_transfer(*, actor, challenge_id, code, facts, description=""):
+    """Resume a STEP_UP_REQUIRED transfer with its exact original facts.
+
+    Facts are NOT trusted: they travel through the client round-trip and
+    are re-validated against the challenge's material hash inside the
+    risk gate. Settlement happens at most once via the idempotency_key.
+    """
+    dest = str(facts.get("destination_account") or "")
+    ben = str(facts.get("beneficiary") or "")
+    return execute_transfer(
+        actor=actor,
+        source_account_id=int(facts["source_account"]),
+        amount=facts["amount"],
+        destination_account_id=int(dest) if dest.isdigit() else None,
+        beneficiary_id=int(ben) if ben.isdigit() else None,
+        description=description or "",
+        idempotency_key=facts["idempotency_key"],
+        step_up_code=code,
+        step_up_challenge_id=challenge_id,
+    )
+
+
 def _risk_gate(actor, source, amount, destination, beneficiary, key,
-               scheduled_for=None, recurrence=""):
+               scheduled_for=None, recurrence="",
+               step_up_code=None, step_up_challenge_id=None):
     """Limited-enforcement gate (spec PART 37): the engine decision now acts.
 
     Returns "ALLOW" or "REVIEW". Raises:
@@ -92,6 +127,8 @@ def _risk_gate(actor, source, amount, destination, beneficiary, key,
       RISK_BLOCKED     — ENFORCEMENT BLOCK; a FAILED transfer row is recorded.
     SHADOW mode never interferes (effective_decision maps everything to ALLOW).
     Engine failure is fail-open with an audited trail.
+    A presented step-up code satisfies a pending bound challenge exactly once
+    (locked verify+consume); anything else still stops the flow.
     """
     from apps.fraud import modes
 
@@ -101,15 +138,27 @@ def _risk_gate(actor, source, amount, destination, beneficiary, key,
     effective = modes.effective_decision(ev)
 
     if effective == "CHALLENGE":
-        from apps.fraud.challenge_delivery import issue_and_deliver
+        facts = _transfer_facts(source, amount, destination, beneficiary, key)
+        if step_up_code and step_up_challenge_id:
+            from apps.fraud.challenge import ChallengeError
+            from apps.fraud.challenge_guard import confirm
 
-        facts = {"amount": str(amount), "beneficiary": str(beneficiary.pk if beneficiary else ""),
-                 "idempotency_key": key}
-        ch, _code = issue_and_deliver(ev, source.customer, facts, actor=actor)
-        err = TransferError("STEP_UP_REQUIRED",
-                            f"Step-up verification required (challenge {ch.pk})")
-        err.challenge_id = ch.pk
-        raise err
+            try:
+                confirm(step_up_challenge_id, source.customer,
+                        step_up_code, facts, f"TRANSFER:{key}",
+                        actor=actor)
+            except ChallengeError as exc:
+                raise TransferError(str(exc), f"Step-up verification failed: {exc}")
+            # verified & consumed → settlement proceeds below, once per key
+        else:
+            from apps.fraud.challenge_delivery import issue_and_deliver
+
+            ch, _code = issue_and_deliver(ev, source.customer, facts, actor=actor)
+            err = TransferError("STEP_UP_REQUIRED",
+                                f"Step-up verification required (challenge {ch.pk})")
+            err.challenge_id = ch.pk
+            err.facts = facts   # canonical material facts for the confirm panel
+            raise err
 
     raw = ev.decision
     enforcing = ev.engine_mode == "ENFORCEMENT"
@@ -152,7 +201,8 @@ def _post_gate_review_flag(source, key):
 
 def execute_transfer(*, actor, source_account_id, amount, destination_account_id=None,
                      beneficiary_id=None, description="", idempotency_key=None,
-                     scheduled_for=None, recurrence=""):
+                     scheduled_for=None, recurrence="",
+                     step_up_code=None, step_up_challenge_id=None):
     """Public entry: the risk gate runs OUTSIDE the settlement transaction so
     that block/challenge evidence survives an aborted transfer (INV 9/10)."""
     from apps.accounts.models import Account
@@ -171,7 +221,9 @@ def execute_transfer(*, actor, source_account_id, amount, destination_account_id
     if existing:
         return existing, False  # replays never re-enter the risk gate
     _risk_gate(actor, source, amount, destination, beneficiary, key,
-               scheduled_for=scheduled_for, recurrence=recurrence)
+               scheduled_for=scheduled_for, recurrence=recurrence,
+               step_up_code=step_up_code,
+               step_up_challenge_id=step_up_challenge_id)
     return _execute_transfer_atomic(
         actor=actor, source_account_id=source_account_id, amount=amount,
         destination_account_id=destination_account_id, beneficiary_id=beneficiary_id,

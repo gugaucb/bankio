@@ -3,6 +3,24 @@
 {% load humanize %}
 {% block page %}
 <div id="transfer-result">{% if error %}{% include "transfers/_result.html" with error=error created=True %}{% endif %}</div>
+{% if step_up %}
+<div class="card p-6 mb-5 border-emerald-200">
+  <h2 class="font-semibold mb-1">🔐 Step-up verification required</h2>
+  <p class="text-sm text-gray-600 mb-4">A 6-digit code was sent to you. Enter it below to complete this transfer of ${{ step_up.amount }}.</p>
+  <form method="post" action="{% url 'fraud:stepup_challenge' step_up.challenge_id %}" class="flex flex-wrap items-end gap-3">
+    {% csrf_token %}
+    <input type="hidden" name="fact_source_account" value="{{ step_up.source_account }}">
+    <input type="hidden" name="fact_destination_account" value="{{ step_up.destination_account }}">
+    <input type="hidden" name="fact_beneficiary" value="{{ step_up.beneficiary }}">
+    <input type="hidden" name="fact_amount" value="{{ step_up.amount }}">
+    <input type="hidden" name="fact_idempotency_key" value="{{ step_up.idempotency_key }}">
+    <input type="hidden" name="description" value="{{ step_up.description }}">
+    <input type="text" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" required placeholder="000000"
+           class="tracking-[0.4em] w-32 text-center rounded-xl border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+    <button class="btn-primary">Confirm &amp; transfer</button>
+  </form>
+</div>
+{% endif %}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
   <div class="card p-6">
     <h2 class="font-semibold mb-4">New Transfer</h2>

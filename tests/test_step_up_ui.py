@@ -17,34 +17,6 @@ from apps.notifications.models import Notification
 from tests.conftest import make_user
 
 
-@pytest.fixture
-def accounts_setup(db, django_user_model):
-    """Sender + receiver with funded ledger-backed accounts."""
-    from decimal import Decimal as D
-
-    from apps.accounts.models import Account
-    from apps.ledger import services as ledger
-
-    sender = django_user_model.objects.create_user("su-sender", email="sus@t.io", password="x")
-    receiver = django_user_model.objects.create_user("su-receiver", email="sur@t.io", password="x")
-    cash = ledger.get_or_create_account(f"SU-CASH-{uuid4().hex[:6]}", "Cash", type="ASSET")
-    src = dst = None
-    for user, amount in ((sender, "5000.00"), (receiver, "100.00")):
-        la = ledger.get_or_create_account(
-            f"2001-SU-{user.username}", f"Deposit {user.username}", is_customer=True)
-        acct = Account.objects.create(customer=user, account_number=f"87{user.pk:010d}",
-                                      ledger_account=la)
-        ledger.post_journal(
-            f"SU-DEP-{uuid4().hex[:8]}", "dep",
-            [(cash, "DEBIT", D(amount)), (la, "CREDIT", D(amount))],
-        )
-        if user is sender:
-            src = acct
-        else:
-            dst = acct
-    return sender, receiver, src, dst
-
-
 @pytest.fixture(autouse=True)
 def clean_engine(db, settings):
     settings.FRAUD_MODE = "SHADOW"
