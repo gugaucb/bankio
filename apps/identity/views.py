@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render
 
 from apps.audit.services import record as audit
 from .forms import LoginForm, OTPForm
-from .services import attempt_login, verify_otp, LoginLocked
+from .services import attempt_login, verify_otp, LoginLocked, LoginRiskBlocked
 
 
 def login_view(request):
@@ -19,6 +19,10 @@ def login_view(request):
                 user, needs_otp = attempt_login(form.cleaned_data["username"], form.cleaned_data["password"], request)
             except LoginLocked as e:
                 form.add_error(None, str(e))
+                return render(request, "auth/login.html", {"form": form})
+            except LoginRiskBlocked:
+                # generic on purpose: no risk internals leak to the client
+                form.add_error(None, "Unable to sign in with these credentials.")
                 return render(request, "auth/login.html", {"form": form})
             if user is None:
                 form.add_error(None, "Invalid credentials")

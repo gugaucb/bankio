@@ -38,7 +38,7 @@ Anti-enumeration: avaliação só roda para usuário EXISTENTE com senha válida
 | feat/auth-risk-shadow-integration | evaluate_login no login real, SHADOW | concluído (merge --no-ff) | 542 passed | PASS / PROMOTE |
 | feat/auth-risk-signals | sinais auth + ATO no login real | concluído (merge --no-ff) | 549 passed | PASS / PROMOTE |
 | feat/auth-risk-backtesting | métricas + backtest LOGIN + promotion report | concluído | 555 passed | PASS / PROMOTE (para CHALLENGE_ONLY) |
-| feat/auth-risk-challenge-only | policy LOGIN aplicada, step-up OTP, FAIL_CLOSED | pendente | — | — |
+| feat/auth-risk-challenge-only | policy LOGIN aplicada, step-up OTP, FAIL_CLOSED | concluído (default SHADOW) | 568 passed | PASS |
 | feat/auth-risk-sensitive-profile-actions | PASSWORD_CHANGE/PROFILE_UPDATE policies + enforcement | pendente | — | — |
 
 ## Decisões
