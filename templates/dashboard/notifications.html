@@ -44,5 +44,26 @@
   {% else %}
   <div class="card p-10 text-center text-sm text-gray-400">No notifications.</div>
   {% endif %}
+
+  <div class="card p-5">
+    <h2 class="text-sm font-semibold mb-2">Preferences</h2>
+    <p class="text-xs text-gray-400 mb-3">Security-critical alerts (e.g. MFA, blocks) cannot be turned off.</p>
+    <div class="flex gap-4 flex-wrap text-sm">
+      {% for row in pref_rows %}
+      <form method="post" action="{% url 'app_notifications' %}" class="flex items-center gap-2">
+        {% csrf_token %}
+        <input type="hidden" name="pref_category" value="{{ row.value }}">
+        <span>{{ row.label }}</span>
+        {% if row.enabled %}
+        <input type="hidden" name="pref_enabled" value="0">
+        <button class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">ON — mute</button>
+        {% else %}
+        <input type="hidden" name="pref_enabled" value="1">
+        <button class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">OFF — enable</button>
+        {% endif %}
+      </form>
+      {% endfor %}
+    </div>
+  </div>
 </div>
 {% endblock %}

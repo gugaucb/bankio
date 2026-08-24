@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from apps.audit.services import record as audit
 
-from .models import Category, Notification
+from .models import Category, Notification, NotificationPreference
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +65,12 @@ def notify(*, recipient, category, title, body="", kind="", metadata=None,
             if not kind.replace("_", "").isalnum():
                 raise NotificationError(f"invalid kind {kind!r}")
         safe_meta = _sanitize_metadata(metadata or {})
+        # B7: per-category opt-out. Mandatory kinds are never suppressed;
+        # a disabled category silently drops FUTURE events only (existing
+        # rows are untouched).
+        if kind not in MANDATORY_NOTIFICATION_KINDS and \
+                not _category_enabled(recipient, category):
+            return None
         return _create(recipient=recipient, category=category, title=title,
                        body=body[:500], kind=kind, metadata=safe_meta,
                        dedup_key=dedup_key)
@@ -96,6 +102,27 @@ def _create(*, recipient, category, title, body, kind, metadata, dedup_key):
         if existing is None:
             raise
         return existing
+
+
+def _category_enabled(recipient, category):
+    """Missing row = enabled. Never raises (notify() stays non-critical)."""
+    try:
+        return NotificationPreference.objects.filter(
+            user=recipient, category=category).values_list(
+            "enabled", flat=True).first() is not False
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def set_category_preference(*, actor, category, enabled):
+    """Opt in/out of a notification category. Returns the preference row."""
+    if category not in Category.values:
+        raise NotificationError(f"unknown category {category!r}")
+    pref, _ = NotificationPreference.objects.update_or_create(
+        user=actor, category=category, defaults={"enabled": bool(enabled)})
+    audit(actor=actor, action="NOTIFICATION_PREFERENCES_CHANGED",
+          metadata={"category": category, "enabled": bool(enabled)})
+    return pref
 
 
 def mark_read(notification):
