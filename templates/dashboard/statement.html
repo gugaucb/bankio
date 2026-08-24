@@ -1,0 +1,44 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Statement — Bankio{% endblock %}
+{% block page %}
+<div class="space-y-5">
+  <div class="card p-6 flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="text-xs text-gray-500">{{ account.get_type_display }} · {{ masked_number }}</p>
+      <p class="text-2xl font-bold">${{ balance|floatformat:2 }} <span class="text-sm font-normal text-gray-400">{{ account.currency }}</span></p>
+      <p class="text-xs text-gray-400">{{ account.get_status_display }}</p>
+    </div>
+    <a href="/app/accounts/" class="text-sm text-emerald-700 underline">Back to accounts</a>
+  </div>
+
+  {% if lines %}
+  <div class="card divide-y divide-gray-50 overflow-x-auto">
+    {% for line in lines %}
+    <div class="flex items-center justify-between px-5 py-3.5 gap-3 min-w-[320px]">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 shrink-0 rounded-full {% if line.direction == 'IN' %}bg-emerald-50 text-emerald-700{% else %}bg-red-50 text-red-600{% endif %} grid place-items-center font-semibold">{% if line.direction == 'IN' %}+{% else %}−{% endif %}</div>
+        <div class="min-w-0">
+          <p class="text-sm font-medium truncate">{{ line.description|default:line.operation_type }}</p>
+          <p class="text-xs text-gray-400 truncate">{{ line.timestamp|date:"d M Y, H:i" }} · {{ line.counterparty }} · {{ line.operation_reference }}</p>
+        </div>
+      </div>
+      <div class="text-right shrink-0">
+        <p class="text-sm font-semibold {% if line.direction == 'IN' %}text-emerald-700{% else %}text-red-600{% endif %}">
+          {% if line.direction == 'IN' %}+{% else %}-{% endif %}${{ line.amount|floatformat:2 }}
+        </p>
+        <p class="text-xs text-gray-400">bal ${{ line.balance_after|floatformat:2 }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="flex items-center gap-3 text-sm">
+    {% if page.has_previous %}<a class="underline" href="?page={{ page.previous_page_number }}">Previous</a>{% endif %}
+    <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="underline" href="?page={{ page.next_page_number }}">Next</a>{% endif %}
+  </div>
+  {% else %}
+  <div class="card p-10 text-center text-sm text-gray-400">No movements in this account yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

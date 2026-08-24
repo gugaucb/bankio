@@ -7,6 +7,7 @@ urlpatterns = [
     path("app/", views.dashboard_view, name="dashboard"),
     path("app/analytics/", app_views.analytics, name="app_analytics"),
     path("app/accounts/", app_views.accounts_view, name="app_accounts"),
+    path("app/accounts/<int:account_id>/statement/", app_views.account_statement_view, name="app_account_statement"),
     path("app/transactions/", app_views.transactions_view, name="app_transactions"),
     path("app/investments/", app_views.investments_view, name="app_investments"),
     path("app/cards/", app_views.cards_view, name="app_cards"),
