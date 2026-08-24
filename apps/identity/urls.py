@@ -1,6 +1,6 @@
 from django.urls import include, path
 
-from . import app_views, views
+from . import admin_views, app_views, views
 
 urlpatterns = [
     path("", include("apps.portal.urls")),
@@ -17,4 +17,9 @@ urlpatterns = [
     path("logout/", views.logout_view, name="logout"),
     path("", include("apps.transfers.urls")),
     path("", include("apps.managerops.urls")),
+    path("manage/users/", admin_views.users_list, name="admin_users"),
+    path("manage/users/new/", admin_views.user_create, name="admin_user_create"),
+    path("manage/users/<int:user_id>/", admin_views.user_detail, name="admin_user_detail"),
+    path("manage/users/<int:user_id>/block/", admin_views.user_block, name="admin_user_block"),
+    path("manage/users/<int:user_id>/unblock/", admin_views.user_unblock, name="admin_user_unblock"),
 ]
