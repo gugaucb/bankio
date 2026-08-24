@@ -34,6 +34,9 @@
     {% else %}<p class="text-sm text-gray-400">No mode changes recorded.</p>{% endif %}
   </div>
 
-  <a href="{% url 'fraud:secops_health' %}" class="btn-primary inline-block">Back to health</a>
+  <div class="flex gap-3">
+    <a href="{% url 'fraud:secops_health' %}" class="btn-primary inline-block">Back to health</a>
+    <a href="{% url 'fraud:secops_evaluations' %}" class="btn-primary inline-block">Evaluation browser</a>
+  </div>
 </div>
 {% endblock %}

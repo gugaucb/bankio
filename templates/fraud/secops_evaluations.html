@@ -1,0 +1,63 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Risk Evaluations — Bankio{% endblock %}
+{% block page %}
+<div class="space-y-5">
+  <h2 class="text-xl font-bold">Security Operations — Risk Evaluations</h2>
+
+  <form method="get" class="card p-4 flex flex-wrap gap-3 items-end text-sm">
+    <label>Operation
+      <select name="operation" class="block rounded-lg border px-2 py-1 mt-1">
+        <option value="">all</option>
+        {% for op in operations %}<option value="{{ op }}" {% if filters.operation == op %}selected{% endif %}>{{ op }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Decision
+      <select name="decision" class="block rounded-lg border px-2 py-1 mt-1">
+        <option value="">all</option>
+        {% for value, label in decisions %}<option value="{{ value }}" {% if filters.decision == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Level
+      <select name="level" class="block rounded-lg border px-2 py-1 mt-1">
+        <option value="">all</option>
+        {% for value, label in levels %}<option value="{{ value }}" {% if filters.level == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Mode
+      <select name="mode" class="block rounded-lg border px-2 py-1 mt-1">
+        <option value="">all</option>
+        {% for value, label in enginemodes %}<option value="{{ value }}" {% if filters.mode == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn-primary">Filter</button>
+  </form>
+
+  <div class="card p-6 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-gray-500"><th class="py-2">When</th><th>Operation</th><th>Actor</th><th>Decision</th><th>Level</th><th>Status</th><th>Mode</th><th></th></tr></thead>
+      <tbody>
+        {% for ev in page.object_list %}
+        <tr class="border-t border-gray-50">
+          <td class="py-2 text-gray-400">{{ ev.created_at|date:"d M H:i" }}</td>
+          <td>{{ ev.operation_type }}</td>
+          <td>{{ ev.actor.username|default:"—" }}</td>
+          <td class="{% if ev.decision == 'BLOCK' %}text-red-600{% elif ev.decision == 'CHALLENGE' %}text-amber-600{% endif %} font-medium">{{ ev.decision|default:"—" }}</td>
+          <td>{{ ev.risk_level|default:"—" }}</td>
+          <td class="{% if ev.status == 'FAILED' %}text-red-600{% endif %}">{{ ev.status }}</td>
+          <td>{{ ev.engine_mode }}</td>
+          <td><a class="text-emerald-700 underline" href="{% url 'fraud:secops_evaluation_detail' ev.pk %}">detail</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="py-4 text-gray-400">No evaluations match the filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flex items-center gap-3 text-sm">
+    {% if page.has_previous %}<a class="underline" href="?page={{ page.previous_page_number }}&operation={{ filters.operation }}&decision={{ filters.decision }}&level={{ filters.level }}&mode={{ filters.mode }}">Previous</a>{% endif %}
+    <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="underline" href="?page={{ page.next_page_number }}&operation={{ filters.operation }}&decision={{ filters.decision }}&level={{ filters.level }}&mode={{ filters.mode }}">Next</a>{% endif %}
+  </div>
+</div>
+{% endblock %}
