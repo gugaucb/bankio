@@ -42,6 +42,44 @@ _ERROR_MESSAGES = {
 }
 
 
+_RESUME_ERROR_MESSAGES = {
+    "CHALLENGE_NOT_FOUND": "Challenge not found.",
+    "CHALLENGE_EXPIRED": _ERROR_MESSAGES["CHALLENGE_EXPIRED"],
+    "CHALLENGE_NOT_PENDING": _ERROR_MESSAGES["CHALLENGE_NOT_PENDING"],
+    "MATERIAL_CHANGED": _ERROR_MESSAGES["MATERIAL_CHANGED"],
+    "INVALID_CODE": _ERROR_MESSAGES["INVALID_CODE"],
+}
+
+
+def _resume_transfer(request, challenge, facts):
+    """Verify + consume + settle via the transfer domain's own gate."""
+    from apps.transfers.services import TransferError, resume_transfer
+
+    try:
+        transfer, created = resume_transfer(
+            actor=request.user,
+            challenge_id=challenge.pk,
+            code=request.POST.get("code") or "",
+            facts=facts,
+            description=request.POST.get("description") or "",
+        )
+    except TransferError as exc:
+        message = _RESUME_ERROR_MESSAGES.get(str(exc), f"Could not complete the operation: {exc}")
+        response = render(request, "security/challenge.html", {
+            "nav": "security",
+            "page_heading": "Confirm your operation",
+            "challenge": challenge,
+            "operation_type": challenge.evaluation.operation_type,
+            "amount": challenge.evaluation.amount,
+            "currency": challenge.evaluation.currency,
+            "state_message": message,
+        })
+        response.status_code = 400
+        return response
+    messages.success(request, "Operation completed.")
+    return redirect("transfers")
+
+
 def _own_challenge(request, challenge_id):
     """Owner-or-404: another user's challenge is indistinguishable from a
     nonexistent one (IDOR hardening)."""
@@ -76,6 +114,8 @@ def challenge_detail(request, challenge_id):
         facts = _posted_facts(request)
         if not facts:
             error = "MISSING_CONTEXT"
+        elif facts.get("source_account") and evaluation.operation_type == "TRANSFER":
+            return _resume_transfer(request, challenge, facts)
         else:
             try:
                 verify_challenge(challenge, request.POST.get("code") or "", facts)
