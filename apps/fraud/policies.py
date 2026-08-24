@@ -34,6 +34,13 @@ POLICIES = {
         Level.HIGH: Decision.CHALLENGE,
         Level.CRITICAL: Decision.REVIEW,
     },
+    # Explicit policy for password changes (spec: policy BEFORE enforcement).
+    "PASSWORD_CHANGE": {
+        Level.LOW: Decision.ALLOW,
+        Level.MEDIUM: Decision.ALLOW,
+        Level.HIGH: Decision.CHALLENGE,
+        Level.CRITICAL: Decision.REVIEW,
+    },
 }
 
 POLICY_VERSION = "policy-v1"

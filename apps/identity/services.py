@@ -247,6 +247,33 @@ class LoginRiskBlocked(Exception):
     or BLOCK under enforcement). Evidence is already persisted by the engine."""
 
 
+class ProfileActionBlocked(Exception):
+    """A sensitive profile action (PASSWORD_CHANGE / PROFILE_UPDATE) was
+    refused by the engine's effective decision or failed fail-closed."""
+
+
+def sensitive_action_decision(evaluation):
+    """Server-side-only mapping of a stored evaluation for a sensitive
+    profile action. Engine failure outside observational modes → BLOCK
+    (PASSWORD_CHANGE/PROFILE_UPDATE are unknown to the FAIL_OPEN matrix,
+    so resolve_failure returns FAIL_CLOSED)."""
+    from apps.fraud.failsafe import FAIL_OPEN, resolve_failure
+    from apps.fraud.models import RiskEvaluation
+    from apps.fraud.modes import effective_decision, get_mode
+
+    if evaluation is None:
+        if resolve_failure("PASSWORD_CHANGE") != FAIL_OPEN and get_mode() not in (
+            RiskEvaluation.EngineMode.SHADOW, "DISABLED"):
+            return "BLOCK"
+        return "ALLOW"
+    action = effective_decision(evaluation)
+    if action == RiskEvaluation.Decision.BLOCK:
+        return "BLOCK"
+    if action == RiskEvaluation.Decision.CHALLENGE:
+        return "CHALLENGE"
+    return "ALLOW"
+
+
 def _effective_login_action(evaluation):
     """Server-side-only mapping of a stored LOGIN evaluation to an action.
 

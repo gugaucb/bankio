@@ -52,6 +52,14 @@
       <h3 class="font-semibold">Change Password</h3>
       {% if pw_error %}<p class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2">{{ pw_error }}</p>{% endif %}
       {{ form.as_p }}
+      {% if risk_confirm_open %}
+      <div class="rounded-lg bg-amber-50 text-amber-800 text-sm px-3 py-2">
+        Additional verification required. Enter the 6-digit code we just issued you to apply the new password.
+      </div>
+      <input type="text" name="risk_code" inputmode="numeric" maxlength="6"
+             autocomplete="one-time-code" placeholder="123456"
+             class="w-full rounded-lg border px-3 py-2 text-sm tracking-widest">
+      {% endif %}
       <button class="btn-primary w-full">Update password</button>
       <p class="text-xs text-gray-400">You will stay signed in after changing your password.</p>
     </form>
