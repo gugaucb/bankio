@@ -1,0 +1,60 @@
+{% extends "manager/base.html" %}
+{% block page %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+    <p class="text-sm text-slate-500">User administration overview</p>
+  </div>
+</div>
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-2xl shadow-sm p-5">
+    <p class="text-xs text-slate-500 uppercase tracking-wide">Total users</p>
+    <p class="text-3xl font-bold text-slate-900 mt-1">{{ stats.total_users }}</p>
+  </div>
+  <div class="bg-white rounded-2xl shadow-sm p-5">
+    <p class="text-xs text-slate-500 uppercase tracking-wide">Active</p>
+    <p class="text-3xl font-bold text-emerald-700 mt-1">{{ stats.active_users }}</p>
+  </div>
+  <div class="bg-white rounded-2xl shadow-sm p-5">
+    <p class="text-xs text-slate-500 uppercase tracking-wide">Blocked</p>
+    <p class="text-3xl font-bold text-red-600 mt-1">{{ stats.blocked_users }}</p>
+  </div>
+  <div class="bg-white rounded-2xl shadow-sm p-5">
+    <p class="text-xs text-slate-500 uppercase tracking-wide">New this month</p>
+    <p class="text-3xl font-bold text-slate-900 mt-1">{{ stats.new_users_month }}</p>
+  </div>
+</div>
+
+<div class="flex flex-wrap gap-3 mb-6 text-sm">
+  <a href="{% url 'admin_user_create' %}" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700">＋ Cadastrar usuário</a>
+  <a href="{% url 'admin_users' %}" class="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50">Gerenciar usuários</a>
+  <a href="{% url 'admin_users' %}?status=BLOCKED" class="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50">Usuários bloqueados</a>
+  <a href="#recent-actions" class="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50">Auditoria recente</a>
+</div>
+
+<div id="recent-actions" class="bg-white rounded-2xl shadow-sm overflow-x-auto">
+  <div class="px-4 pt-4 pb-2 font-semibold text-slate-800 text-sm">Recent administrative actions</div>
+  {% if recent_actions %}
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-slate-500 border-b border-slate-200">
+        <th class="px-4 py-2">When</th><th class="px-4 py-2">Action</th><th class="px-4 py-2">Actor</th><th class="px-4 py-2">Target</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ev in recent_actions %}
+      <tr class="border-b border-slate-100">
+        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ ev.timestamp|date:"Y-m-d H:i" }}</td>
+        <td class="px-4 py-2 font-medium text-slate-800">{{ ev.action }}</td>
+        <td class="px-4 py-2">{% if ev.actor %}{{ ev.actor.username }}{% else %}{{ ev.actor_id|default:"—" }}{% endif %}</td>
+        <td class="px-4 py-2 text-slate-600">{{ ev.resource_id }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="p-8 text-center text-slate-500 text-sm">No administrative actions recorded yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

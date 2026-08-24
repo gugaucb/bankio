@@ -18,6 +18,7 @@ urlpatterns = [
     path("", include("apps.transfers.urls")),
     path("", include("apps.managerops.urls")),
     path("manage/users/", admin_views.users_list, name="admin_users"),
+    path("manage/users/dashboard/", admin_views.admin_dashboard, name="admin_dashboard"),
     path("manage/users/new/", admin_views.user_create, name="admin_user_create"),
     path("manage/users/<int:user_id>/", admin_views.user_detail, name="admin_user_detail"),
     path("manage/users/<int:user_id>/block/", admin_views.user_block, name="admin_user_block"),
