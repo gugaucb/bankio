@@ -49,3 +49,31 @@ def engine_health(request):
         "nav": "secops",
         **ctx,
     })
+
+
+@login_required
+def mode_control(request):
+    """View current mode (all secops roles); change it only with
+    change_fraud_mode permission or superuser. History from audit."""
+    _require_secops_user(request)
+    if request.method == "POST":
+        if not has_permission(request.user, "change_fraud_mode"):
+            raise PermissionDenied("change_fraud_mode required")
+        new_mode = request.POST.get("mode", "")
+        try:
+            modes.set_mode(new_mode, actor=request.user)
+            messages.success(request, f"Fraud mode set to {new_mode}.")
+        except modes.FraudModeError:
+            messages.error(request, "Unknown mode.")
+        return redirect("fraud:secops_mode")
+
+    history = AuditLog.objects.filter(action="FRAUD_MODE_CHANGED") \
+        .order_by("-timestamp")[:20]
+    return render(request, "fraud/secops_mode.html", {
+        "nav": "secops",
+        "current_mode": modes.get_mode(),
+        "modes": RiskEvaluation.EngineMode.choices,
+        "can_change": request.user.is_superuser
+        or has_permission(request.user, "change_fraud_mode"),
+        "history": history,
+    })

@@ -2,6 +2,8 @@
 import pytest
 from django.urls import reverse
 
+from apps.audit.models import AuditLog
+
 PW = "Str0ng-pass!x"
 
 
@@ -79,3 +81,53 @@ def test_health_renders_metrics(admin):
     content = r.content.decode()
     assert "Engine Health" in content
     assert "Evaluations" in content and "Engine errors" in content
+
+
+# ------------------------------------------------------- S2: mode control
+
+@pytest.mark.django_db
+def test_mode_page_visible_to_all_secops_roles(auditor):
+    _, client = auditor
+    r = client.get(reverse("fraud:secops_mode"))
+    assert r.status_code == 200
+    assert b"Read-only" in r.content          # auditor cannot change
+
+
+@pytest.mark.django_db
+def test_auditor_cannot_post_mode_change(auditor):
+    from apps.fraud.models import FraudEngineSetting
+
+    _, client = auditor
+    assert client.post(reverse("fraud:secops_mode"),
+                       {"mode": "CHALLENGE_ONLY"}).status_code == 403
+    assert not FraudEngineSetting.objects.filter(key="FRAUD_MODE").exists()
+
+
+@pytest.mark.django_db
+def test_customer_cannot_change_mode(customer):
+    _, client = customer
+    assert client.post(reverse("fraud:secops_mode"),
+                       {"mode": "ENFORCEMENT"}).status_code == 403
+
+
+@pytest.mark.django_db
+def test_fraud_manager_changes_mode_with_audit(fraud_manager):
+    from apps.fraud.modes import get_mode
+
+    user, client = fraud_manager
+    r = client.post(reverse("fraud:secops_mode"), {"mode": "CHALLENGE_ONLY"})
+    assert r.status_code == 302
+    assert get_mode() == "CHALLENGE_ONLY"
+    log = AuditLog.objects.filter(action="FRAUD_MODE_CHANGED").latest("pk")
+    assert log.metadata["to"] == "CHALLENGE_ONLY"
+
+
+@pytest.mark.django_db
+def test_unknown_mode_rejected_with_message(fraud_manager):
+    from apps.fraud.modes import get_mode
+
+    _, client = fraud_manager
+    r = client.post(reverse("fraud:secops_mode"), {"mode": "FULL_POWER"},
+                    follow=True)
+    assert b"Unknown mode" in r.content
+    assert get_mode() != "FULL_POWER"

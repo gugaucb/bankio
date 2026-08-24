@@ -50,5 +50,8 @@
     {% else %}<p class="text-sm text-gray-400">No errors recorded.</p>{% endif %}
   </div>
 
+  <div class="flex gap-3">
+    <a href="{% url 'fraud:secops_mode' %}" class="btn-primary">Mode control</a>
+  </div>
 </div>
 {% endblock %}
