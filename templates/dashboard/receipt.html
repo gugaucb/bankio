@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Receipt {{ journal.reference }} — Bankio{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto my-10 p-8 bg-white rounded-2xl border border-gray-100 print:shadow-none print:border-0">
+  <div class="text-center mb-6 print:mb-4">
+    <div class="inline-grid place-items-center w-12 h-12 rounded-xl bg-emerald-800 text-white font-bold text-xl mb-2">B</div>
+    <h2 class="font-bold text-lg">Payment Receipt</h2>
+    <p class="text-xs text-gray-400">Bankio · officially issued</p>
+  </div>
+
+  <div class="text-sm space-y-2 divide-y divide-gray-50 mb-6">
+    <p class="flex justify-between py-1.5"><span class="text-gray-500">Reference</span><span class="font-mono">{{ journal.reference }}</span></p>
+    <p class="flex justify-between py-1.5"><span class="text-gray-500">Type</span><span>{{ op_type|title }}</span></p>
+    <p class="flex justify-between py-1.5"><span class="text-gray-500">Date</span><span>{{ journal.posted_at|date:"d M Y, H:i" }}</span></p>
+    <p class="flex justify-between py-1.5"><span class="text-gray-500">Amount</span><span class="font-bold">{{ direction }} ${{ amount|floatformat:2 }} {{ journal.currency }}</span></p>
+    {% if op_type == 'TRANSFER' and op %}
+    <p class="flex justify-between py-1.5"><span class="text-gray-500">From account</span><span>•••• {{ op.source_account.account_number|slice:"-4:" }}</span></p>
+    <p class="flex justify-between py-1.5"><span class="text-gray-500">To</span><span>{% if op.destination_account_id %}•••• {{ op.destination_account.account_number|slice:"-4:" }}{% elif op.beneficiary_id %}{{ op.beneficiary.name }}{% else %}External{% endif %}</span></p>
+    {% elif op_type == 'PAYMENT' and op %}
+    <p class="flex justify-between py-1.5"><span class="text-gray-500">Biller</span><span>{{ op.bill.biller }}</span></p>
+    {% elif op_type == 'CARD' and op %}
+    <p class="flex justify-between py-1.5"><span class="text-gray-500">Merchant</span><span>{{ op.merchant }}</span></p>
+    {% endif %}
+    <p class="flex justify-between py-1.5"><span class="text-gray-500">Status</span><span class="font-medium">{{ status }}{% if reversed %} (reversed — see {{ reversal_reference }}){% endif %}</span></p>
+  </div>
+
+  <p class="text-[11px] text-gray-400 text-center leading-relaxed">
+    This document is a read-only representation of a settled ledger operation
+    and has no independent financial value. Verify via reference
+    {{ journal.reference }}.
+  </p>
+
+  <div class="mt-6 text-center print:hidden">
+    <button onclick="window.print()" class="btn-primary">Print / Save PDF</button>
+  </div>
+</div>
+{% endblock %}

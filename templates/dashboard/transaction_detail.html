@@ -1,0 +1,33 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Transaction — Bankio{% endblock %}
+{% block page %}
+<div class="space-y-5 max-w-xl">
+  <div class="card p-6 space-y-2 text-sm">
+    <h3 class="font-semibold mb-3">{{ op_type|title }} · {{ journal.reference }}</h3>
+    <ul class="divide-y divide-gray-50">
+      <li class="py-2 flex justify-between"><span>Status</span><span class="font-medium {% if journal.reversed_by.exists %}text-amber-600{% endif %}">{% if journal.reversed_by.exists %}REVERTED{% else %}{% firstof op.status journal.status %}{% endif %}</span></li>
+      <li class="py-2 flex justify-between"><span>Date</span><span>{{ journal.posted_at|date:"d M Y, H:i" }}</span></li>
+      <li class="py-2 flex justify-between"><span>Amount</span><span>{{ journal.currency }}</span></li>
+      {% if direction %}
+      <li class="py-2 flex justify-between"><span>Direction</span><span>{% if direction == 'IN' %}Incoming{% else %}Outgoing{% endif %}</span></li>
+      {% endif %}
+      {% if counterparty %}<li class="py-2 flex justify-between"><span>Counterparty</span><span>{{ counterparty }}</span></li>{% endif %}
+      {% if op.description %}<li class="py-2 flex justify-between"><span>Description</span><span>{{ op.description }}</span></li>{% endif %}
+      <li class="py-2 flex justify-between"><span>Reference</span><span class="font-mono">{{ journal.reference }}</span></li>
+    </ul>
+  </div>
+
+  <div class="flex gap-3 flex-wrap text-sm">
+    {% if receipt_available %}
+    <a href="{% url 'app_transaction_receipt' journal.reference %}" class="btn-primary">Receipt</a>
+    {% endif %}
+    {% if reversal_reference %}
+    <a href="{% url 'app_transaction_detail' reversal_reference %}" class="underline">View reversal</a>
+    {% endif %}
+    {% if original_reference %}
+    <a href="{% url 'app_transaction_detail' original_reference %}" class="underline">View original operation</a>
+    {% endif %}
+    <a href="/app/transactions/" class="underline text-gray-500">Back to transactions</a>
+  </div>
+</div>
+{% endblock %}

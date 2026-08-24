@@ -348,6 +348,7 @@ def _settle(transfer: Transfer, actor):
         lines=lines,
     )
     transfer.journal = journal
+    transfer.save(update_fields=["journal"])
     transfer.transition(TransferStatus.PROCESSING)
     transfer.transition(TransferStatus.COMPLETED)
     audit(actor=actor, action="TRANSFER_COMPLETED", resource=transfer)

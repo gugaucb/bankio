@@ -48,7 +48,7 @@
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-9 h-9 shrink-0 rounded-full {% if line.direction == 'IN' %}bg-emerald-50 text-emerald-700{% else %}bg-red-50 text-red-600{% endif %} grid place-items-center font-semibold">{% if line.direction == 'IN' %}+{% else %}−{% endif %}</div>
         <div class="min-w-0">
-          <p class="text-sm font-medium truncate">{{ line.description|default:line.operation_type }}</p>
+          <a class="text-sm font-medium truncate hover:underline" href="{% url 'app_transaction_detail' line.operation_reference %}">{{ line.description|default:line.operation_type }}</a>
           <p class="text-xs text-gray-400 truncate">{{ line.timestamp|date:"d M Y, H:i" }} · {{ line.counterparty }} · {{ line.operation_reference }}</p>
         </div>
       </div>
