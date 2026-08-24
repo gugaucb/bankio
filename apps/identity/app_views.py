@@ -564,3 +564,90 @@ def transaction_receipt_view(request, reference):
         "reversed": reversal is not None,
         "reversal_reference": reversal.reference if reversal else None,
     })
+
+
+def _csv_safe(value):
+    """Mitigate CSV/spreadsheet formula injection for user-controllable text."""
+    import csv as _csv
+
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return f"'{value}"
+    return value
+
+
+@login_required
+@customer_only
+def account_statement_export(request, account_id):
+    """CSV export — strictly the StatementService + same GET filters.
+    Streaming with a hard row cap; never a second independent query path."""
+    import csv
+    from django.http import StreamingHttpResponse
+    from django.core.paginator import Paginator
+    from django.http import Http404
+    from apps.accounts.statement import apply_filters, get_owned_account, statement_lines, statement_queryset
+    from apps.audit.services import record as audit
+
+    try:
+        account = get_owned_account(request.user, account_id)
+    except Account.DoesNotExist:
+        raise Http404("Account not found")
+
+    MAX_ROWS = 5000
+    filtered, active_filters = apply_filters(statement_queryset(account), account, request.GET)
+    total = Paginator(filtered, 1000).count
+    rows = min(total, MAX_ROWS)
+
+    def generate():
+        import io
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(["Date", "Description", "Type", "In", "Out", "Balance", "Reference"])
+        yield buf.getvalue()
+        buf.seek(0); buf.truncate()
+        emitted = 0
+        for chunk_start in range(0, rows, 500):
+            page = filtered[chunk_start:chunk_start + 500]
+            for line in statement_lines(account, page):
+                w.writerow([
+                    line.timestamp.strftime("%Y-%m-%d %H:%M"),
+                    _csv_safe(line.description),
+                    line.operation_type,
+                    str(line.amount) if line.direction == "IN" else "",
+                    str(line.amount) if line.direction == "OUT" else "",
+                    str(line.balance_after),
+                    _csv_safe(line.operation_reference),
+                ])
+            yield buf.getvalue()
+            buf.seek(0); buf.truncate()
+            emitted += len(page)
+
+    response = StreamingHttpResponse(generate(), content_type="text/csv")
+    response["Content-Disposition"] = (
+        f'attachment; filename="statement-{account.account_number}.csv"')
+    audit(actor=request.user, action="STATEMENT_EXPORTED",
+          metadata={"account": account.account_number[-4:], "rows": rows})
+    return response
+
+
+@login_required
+@customer_only
+def account_statement_print(request, account_id):
+    """Print-friendly HTML statement (no PDF engine added). Same service+filters."""
+    from django.core.paginator import Paginator
+    from django.http import Http404
+    from apps.accounts.statement import apply_filters, get_owned_account, statement_lines, statement_queryset
+
+    try:
+        account = get_owned_account(request.user, account_id)
+    except Account.DoesNotExist:
+        raise Http404("Account not found")
+
+    PRINT_MAX = 300
+    filtered, active_filters = apply_filters(statement_queryset(account), account, request.GET)
+    entries = Paginator(filtered, PRINT_MAX).get_page(1)
+    lines = statement_lines(account, entries)[:PRINT_MAX]
+    return render(request, "dashboard/statement_print.html", {
+        "account": account, "balance": account.current_balance,
+        "masked_number": f"•••• {account.account_number[-4:]}",
+        "lines": lines, "truncated": filtered.count() > PRINT_MAX,
+    })

@@ -62,6 +62,11 @@
     {% endfor %}
   </div>
 
+  <div class="flex gap-3 text-sm">
+    <a class="underline" href="{% url 'app_account_statement_print' account.pk %}?period={{ filters.period }}&from={{ filters.from }}&to={{ filters.to }}&direction={{ filters.direction }}&source={{ filters.source }}&q={{ filters.q|urlencode }}">Print</a>
+    <a class="underline" href="{% url 'app_account_statement_export' account.pk %}?period={{ filters.period }}&from={{ filters.from }}&to={{ filters.to }}&direction={{ filters.direction }}&source={{ filters.source }}&q={{ filters.q|urlencode }}">Export CSV</a>
+  </div>
+
   <div class="flex items-center gap-3 text-sm">
     {% if page.has_previous %}<a class="underline" href="?page={{ page.previous_page_number }}&period={{ filters.period }}&from={{ filters.from }}&to={{ filters.to }}&direction={{ filters.direction }}&source={{ filters.source }}&q={{ filters.q|urlencode }}">Previous</a>{% endif %}
     <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
