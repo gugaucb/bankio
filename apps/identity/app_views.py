@@ -280,13 +280,41 @@ def security_view(request):
             messages.success(request, "Password changed successfully.")
             return redirect("app_security")
         pw_error = "; ".join(" ".join(v) for v in form.errors.values())
+
+    elif request.method == "POST":
+        from .services import DeviceError, revoke_device, trust_device, untrust_device
+
+        device_pk = request.POST.get("device")
+        try:
+            if "trust_device" in request.POST:
+                trust_device(u, device_pk, request=request)
+                messages.success(request, "Device marked as trusted.")
+            elif "untrust_device" in request.POST:
+                untrust_device(u, device_pk, request=request)
+                messages.success(request, "Device trust revoked.")
+            elif "revoke_device" in request.POST:
+                revoke_device(u, device_pk, request=request)
+                messages.success(request, "Device removed.")
+            return redirect("app_security")
+        except (DeviceError, ValueError, TypeError):
+            # foreign/unknown ids are silent no-ops; back to the page
+            return redirect("app_security")
+
     from apps.audit.models import AuditLog
 
     events = AuditLog.objects.filter(actor=u, action__startswith="LOGIN").order_by("-timestamp")[:10]
     recent_logins = [(e.action, e.timestamp, e.ip_address) for e in events]
+
+    from .services import current_device_hash
+
+    current_hash = current_device_hash(request)
+    devices = []
+    for d in u.devices.order_by("-last_seen"):
+        devices.append({"obj": d, "current": d.device_id == current_hash})
     return render(request, "dashboard/security.html", {
         "nav": "security", "page_heading": "Security",
         "recent_logins": recent_logins, "pw_error": pw_error,
+        "devices": devices,
     })
 
 
