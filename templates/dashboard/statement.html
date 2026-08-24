@@ -11,6 +11,36 @@
     <a href="/app/accounts/" class="text-sm text-emerald-700 underline">Back to accounts</a>
   </div>
 
+  <form method="get" class="card p-4 flex flex-wrap gap-3 items-end text-sm">
+    <label>Period
+      <select name="period" class="block rounded-lg border px-2 py-1 mt-1">
+        <option value="">all time</option>
+        {% for value, label in period_choices %}<option value="{{ value }}" {% if filters.period == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <span class="{% if filters.period != 'custom' %}hidden{% endif %} flex gap-2 items-end" id="custom-range">
+      <label>From <input type="date" name="from" value="{{ filters.from|default:'' }}" class="block rounded-lg border px-2 py-1 mt-1"></label>
+      <label>To <input type="date" name="to" value="{{ filters.to|default:'' }}" class="block rounded-lg border px-2 py-1 mt-1"></label>
+    </span>
+    <label>Direction
+      <select name="direction" class="block rounded-lg border px-2 py-1 mt-1">
+        <option value="">All</option>
+        <option value="in" {% if filters.direction == 'in' %}selected{% endif %}>In</option>
+        <option value="out" {% if filters.direction == 'out' %}selected{% endif %}>Out</option>
+      </select>
+    </label>
+    <label>Type
+      <select name="source" class="block rounded-lg border px-2 py-1 mt-1">
+        <option value="">All</option>
+        {% for value, label in source_choices %}<option value="{{ value }}" {% if filters.source == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Search
+      <input type="text" name="q" value="{{ filters.q|default:'' }}" placeholder="description or reference" class="block rounded-lg border px-2 py-1 mt-1 w-48">
+    </label>
+    <button class="btn-primary">Apply</button>
+  </form>
+
   {% if lines %}
   <div class="card divide-y divide-gray-50 overflow-x-auto">
     {% for line in lines %}
@@ -33,9 +63,9 @@
   </div>
 
   <div class="flex items-center gap-3 text-sm">
-    {% if page.has_previous %}<a class="underline" href="?page={{ page.previous_page_number }}">Previous</a>{% endif %}
+    {% if page.has_previous %}<a class="underline" href="?page={{ page.previous_page_number }}&period={{ filters.period }}&from={{ filters.from }}&to={{ filters.to }}&direction={{ filters.direction }}&source={{ filters.source }}&q={{ filters.q|urlencode }}">Previous</a>{% endif %}
     <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
-    {% if page.has_next %}<a class="underline" href="?page={{ page.next_page_number }}">Next</a>{% endif %}
+    {% if page.has_next %}<a class="underline" href="?page={{ page.next_page_number }}&period={{ filters.period }}&from={{ filters.from }}&to={{ filters.to }}&direction={{ filters.direction }}&source={{ filters.source }}&q={{ filters.q|urlencode }}">Next</a>{% endif %}
   </div>
   {% else %}
   <div class="card p-10 text-center text-sm text-gray-400">No movements in this account yet.</div>

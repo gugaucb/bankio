@@ -442,14 +442,17 @@ def account_statement_view(request, account_id):
     from nonexistent ones."""
     from django.core.paginator import Paginator
     from django.http import Http404
-    from apps.accounts.statement import get_owned_account, statement_lines, statement_queryset
+    from apps.accounts.statement import (
+        apply_filters, get_owned_account, statement_lines, statement_queryset,
+    )
 
     try:
         account = get_owned_account(request.user, account_id)
     except Account.DoesNotExist:
         raise Http404("Account not found")
 
-    entries = Paginator(statement_queryset(account), 25).get_page(request.GET.get("page"))
+    filtered, active_filters = apply_filters(statement_queryset(account), account, request.GET)
+    entries = Paginator(filtered, 25).get_page(request.GET.get("page"))
     lines = statement_lines(account, entries)
     return render(request, "dashboard/statement.html", {
         "nav": "accounts", "page_heading": "Statement",
@@ -458,4 +461,10 @@ def account_statement_view(request, account_id):
         "masked_number": f"•••• {account.account_number[-4:]}",
         "page": entries,
         "lines": lines,
+        "filters": active_filters,
+        "period_choices": [("today", "Today"), ("7d", "Last 7 days"),
+                           ("30d", "Last 30 days"), ("month", "This month"),
+                           ("custom", "Custom")],
+        "source_choices": [("TRANSFER", "Transfers"), ("PAYMENT", "Payments"),
+                           ("CARD", "Cards"), ("OTHER", "Other")],
     })
