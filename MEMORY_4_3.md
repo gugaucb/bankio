@@ -35,9 +35,9 @@ Anti-enumeration: avaliação só roda para usuário EXISTENTE com senha válida
 
 | Branch | Escopo | Status | Testes | Juiz |
 |---|---|---|---|---|
-| feat/auth-risk-shadow-integration | evaluate_login no login real, SHADOW | pendente | — | — |
-| feat/auth-risk-signals | sinais auth + ATO no login real | pendente | — | — |
-| feat/auth-risk-backtesting | métricas + backtest LOGIN + promotion report | pendente | — | — |
+| feat/auth-risk-shadow-integration | evaluate_login no login real, SHADOW | concluído (merge --no-ff) | 542 passed | PASS / PROMOTE |
+| feat/auth-risk-signals | sinais auth + ATO no login real | concluído (merge --no-ff) | 549 passed | PASS / PROMOTE |
+| feat/auth-risk-backtesting | métricas + backtest LOGIN + promotion report | concluído | 555 passed | PASS / PROMOTE (para CHALLENGE_ONLY) |
 | feat/auth-risk-challenge-only | policy LOGIN aplicada, step-up OTP, FAIL_CLOSED | pendente | — | — |
 | feat/auth-risk-sensitive-profile-actions | PASSWORD_CHANGE/PROFILE_UPDATE policies + enforcement | pendente | — | — |
 
@@ -51,7 +51,8 @@ Anti-enumeration: avaliação só roda para usuário EXISTENTE com senha válida
   LOGIN_MFA com metadata otp_failure=true.
 - R3: backtest usa RiskEvaluation reais (operação LOGIN) + eventos AuditLog;
   intervention/challenge/block rate medidos; SEM precision/recall inventada
-  (sem ground truth).
+  (sem ground truth). Candidate ruleset default do backtest = regras enabled
+  no banco; gate = enforcement_gate reaproveitado (block ≤5%, review ≤20%).
 - R4: CHALLENGE_ONLY reutiliza OTP/MFA existente (pending_otp_user na sessão);
   usuário sem MFA habilitado recebe desafio OTP one-time igual ao fluxo de
   login MFA (mesma infraestrutura, sem terceiro sistema). Engine failure →
