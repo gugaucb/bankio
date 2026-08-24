@@ -155,3 +155,92 @@ def closing_balance_matches(account, last_balance_after):
     if last_balance_after is None:
         return account_balance(account.ledger_account) == Decimal("0")
     return account_balance(account.ledger_account) == last_balance_after
+
+
+# ---------------------------------------------------------------------------
+# FASE 5 Branch 3 — server-side filters (same queryset, no parallel query)
+# ---------------------------------------------------------------------------
+
+PERIODS = ("today", "7d", "30d", "month", "custom")
+
+
+def _direction_sides(account):
+    """Ledger sides that mean money ENTERING this account."""
+    if account.ledger_account.type in ("ASSET", "EXPENSE"):
+        return ("DEBIT",)
+    return ("CREDIT",)
+
+
+def apply_filters(qs, account, params):
+    """Apply period/direction/source/search filters from validated GET params.
+
+    Returns (queryset, active_filters). Invalid input degrades to no-op,
+    never to a broader scope than requested.
+    """
+    from datetime import date, datetime, time
+    from django.utils import timezone as tz
+
+    filters = {}
+    period = params.get("period", "")
+    if period == "custom":
+        try:
+            start = datetime.strptime(params.get("from", ""), "%Y-%m-%d").date()
+            end = datetime.strptime(params.get("to", ""), "%Y-%m-%d").date()
+        except ValueError:
+            return qs, filters
+        if start > end:
+            return qs, filters
+        qs = qs.filter(
+            journal__posted_at__gte=tz.make_aware(datetime.combine(start, time.min)),
+            journal__posted_at__lt=tz.make_aware(datetime.combine(end, time.min)) + tz.timedelta(days=1),
+        )
+        filters.update(period="custom", **{"from": start.isoformat(), "to": end.isoformat()})
+    elif period in PERIODS:
+        now = tz.localtime()
+        if period == "today":
+            start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            qs = qs.filter(journal__posted_at__gte=start)
+        elif period == "7d":
+            qs = qs.filter(journal__posted_at__gte=now - tz.timedelta(days=7))
+        elif period == "30d":
+            qs = qs.filter(journal__posted_at__gte=now - tz.timedelta(days=30))
+        elif period == "month":
+            start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            qs = qs.filter(journal__posted_at__gte=start)
+        filters["period"] = period
+
+    direction = params.get("direction", "")
+    if direction == "in":
+        qs = qs.filter(side__in=_direction_sides(account))
+        filters["direction"] = direction
+    elif direction == "out":
+        sides = ("CREDIT",) if _direction_sides(account) == ("DEBIT",) else ("DEBIT",)
+        qs = qs.filter(side__in=sides)
+        filters["direction"] = direction
+
+    source = params.get("source", "")
+    if source in ("TRANSFER", "PAYMENT", "CARD"):
+        from apps.cards.models import CardTransaction
+        from apps.payments.models import Payment
+        from apps.transfers.models import Transfer
+        model = {"TRANSFER": Transfer, "PAYMENT": Payment, "CARD": CardTransaction}[source]
+        qs = qs.filter(journal_id__in=model.objects.values("journal_id"))
+        filters["source"] = source
+    elif source == "OTHER":
+        from apps.cards.models import CardTransaction
+        from apps.payments.models import Payment
+        from apps.transfers.models import Transfer
+        known = set(Transfer.objects.exclude(journal=None).values_list("journal_id", flat=True))
+        known |= set(Payment.objects.exclude(journal=None).values_list("journal_id", flat=True))
+        known |= set(CardTransaction.objects.exclude(journal=None).values_list("journal_id", flat=True))
+        qs = qs.exclude(journal_id__in=known)
+        filters["source"] = source
+
+    term = (params.get("q") or "").strip()
+    if term:
+        # searchable: only fields actually stored on the journal row
+        from django.db.models import Q
+        qs = qs.filter(Q(journal__reference__icontains=term) | Q(journal__description__icontains=term))
+        filters["q"] = term
+
+    return qs.distinct(), filters
