@@ -181,6 +181,13 @@ def _risk_gate(actor, source, amount, destination, beneficiary, key,
 
         audit(actor=actor, action="TRANSFER_FAILED", resource=t,
               metadata={"reason": "RISK_BLOCKED", "ruleset_version": ev.ruleset_version})
+        from apps.notifications.services import notify as _notify
+        _notify(recipient=actor, category="TRANSFER", kind="TRANSFER_FAILED",
+                title="Transfer declined",
+                body=(f"Your transfer of ${amount} {source.currency} could not be "
+                      f"processed."),
+                metadata={"reference": t.reference},
+                dedup_key=f"TRANSFER_FAILED:{t.reference}:{actor.pk}")
         raise TransferError("RISK_BLOCKED", "Transfer blocked by risk policy")
     return "REVIEW" if (raw == "REVIEW" and enforcing) else "ALLOW"
 
@@ -314,6 +321,12 @@ def _execute_transfer_atomic(*, actor, source_account_id, amount, destination_ac
 
     if risk_review:
         audit(actor=actor, action="TRANSFER_CREATED", resource=transfer, metadata={"under_review": True})
+        from apps.notifications.services import notify as _notify
+        _notify(recipient=actor, category="TRANSFER", kind="TRANSFER_UNDER_REVIEW",
+                title="Transfer under review",
+                body=f"Your transfer {transfer.reference} is being reviewed.",
+                metadata={"reference": transfer.reference},
+                dedup_key=f"TRANSFER_UNDER_REVIEW:{transfer.reference}:{actor.pk}")
         return transfer, True
 
     if transfer.status != TransferStatus.PENDING:
@@ -351,6 +364,7 @@ def _settle(transfer: Transfer, actor):
     transfer.save(update_fields=["journal"])
     transfer.transition(TransferStatus.PROCESSING)
     transfer.transition(TransferStatus.COMPLETED)
+    _bind_completed_notification(transfer)
     audit(actor=actor, action="TRANSFER_COMPLETED", resource=transfer)
 
 
@@ -360,6 +374,10 @@ def reverse_transfer(transfer, actor):
         raise TransferError("NOT_REVERSIBLE", "Only completed transfers can be reversed")
     ledger.reverse_journal(transfer.journal, reference=f"REV-{transfer.reference}")
     transfer.transition(TransferStatus.REVERSED)
+    transaction.on_commit(lambda: _notify_transfer(
+        transfer, "TRANSFER_REVERSED", transfer.source_account.customer,
+        "Transfer reversed",
+        f"Your transfer {transfer.reference} was reversed and the amount returned."))
     audit(actor=actor, action="TRANSFER_REVERSED", resource=transfer)
     return transfer
 
@@ -408,3 +426,41 @@ def process_due_scheduled(now=None):
             t.failure_reason = e.code
             t.transition(TransferStatus.FAILED)
     return processed
+
+
+# ---------------------------------------------------------------------------
+# FASE 6 — customer notifications (in-app only; never financial-critical).
+# Monetary events are emitted via transaction.on_commit() so that a
+# notification is only created AFTER the settlement commit.
+# ---------------------------------------------------------------------------
+
+def _notify_transfer(transfer, event, recipient, title, body):
+    from apps.notifications.services import notify
+
+    return notify(
+        recipient=recipient, category="TRANSFER", kind=event,
+        title=title, body=body,
+        metadata={"reference": transfer.reference},
+        dedup_key=f"{event}:{transfer.reference}:{recipient.pk}",
+    )
+
+
+def _transfer_completed_notifications(transfer_id):
+    from django.utils.timezone import localtime
+
+    t = Transfer.objects.select_related("source_account__customer",
+                                        "destination_account__customer").filter(pk=transfer_id).first()
+    if t is None or t.status != TransferStatus.COMPLETED:
+        return  # state moved on (e.g. reversed) — never announce stale success
+    stamp = localtime(t.updated_at).strftime("%d %b %Y %H:%M")
+    _notify_transfer(t, "TRANSFER_COMPLETED", t.source_account.customer,
+                     "Transfer completed",
+                     f"Your transfer {t.reference} of ${t.amount} {t.currency} was completed.")
+    if t.destination_account_id:
+        _notify_transfer(t, "TRANSFER_RECEIVED", t.destination_account.customer,
+                         "Transfer received",
+                         f"You received ${t.amount} {t.currency} (ref {t.reference}).")
+
+
+def _bind_completed_notification(transfer):
+    transaction.on_commit(lambda: _transfer_completed_notifications(transfer.pk))
