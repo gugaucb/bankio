@@ -22,7 +22,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.audit.services import record as audit
-from apps.notifications.models import Notification
+from apps.notifications.services import notify
 
 from .challenge import (
     CHALLENGE_TTL_MINUTES,
@@ -171,11 +171,13 @@ def reissue_challenge(challenge_id, customer, actor=None, request=None):
 
     deliver(customer, new, code)   # test/dev channel asserts against this
     # re-derive hash consistency: deliver() received the plaintext we hashed
-    Notification.objects.create(
-        recipient=customer, category="SECURITY",
+    notify(
+        recipient=customer, category="SECURITY", kind="CHALLENGE_REISSUED",
         title="Verification code sent",
         body=(f"A new verification code was sent to you for a "
               f"{old.evaluation.operation_type.replace('_', ' ').lower()} "
               f"operation. The previous code is no longer valid."),
+        metadata={"operation": old.evaluation.operation_type},
+        dedup_key=f"CHALLENGE_REISSUED:{new.pk}:{customer.pk}",
     )
     return new, code

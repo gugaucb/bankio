@@ -15,7 +15,7 @@ To integrate a real provider, swap deliver(); callers never touch codes.
 import logging
 
 from apps.audit.services import record as audit
-from apps.notifications.models import Notification
+from apps.notifications.services import notify
 
 from .challenge import issue_challenge
 
@@ -42,11 +42,13 @@ def issue_and_deliver(evaluation, customer, material_facts, actor=None, request=
             "expires_at": challenge.expires_at.isoformat(),
         },
     )
-    Notification.objects.create(
-        recipient=customer, category="SECURITY",
+    notify(
+        recipient=customer, category="SECURITY", kind="CHALLENGE_ISSUED",
         title="Verification code sent",
         body=(f"A verification code was sent to you to confirm a "
               f"{evaluation.operation_type.replace('_', ' ').lower()} operation. "
               f"It expires in 10 minutes."),
+        metadata={"operation": evaluation.operation_type},
+        dedup_key=f"CHALLENGE_ISSUED:{challenge.pk}:{customer.pk}",
     )
     return challenge, code
