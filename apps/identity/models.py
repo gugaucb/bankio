@@ -24,6 +24,7 @@ class User(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
     mfa_enabled = models.BooleanField(default=False)
     mfa_secret = models.CharField(max_length=12, blank=True)  # demo OTP secret
+    otp_generated_at = models.DateTimeField(null=True, blank=True)  # TTL anchor
     failed_login_count = models.PositiveIntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
 

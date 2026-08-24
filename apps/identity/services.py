@@ -11,6 +11,7 @@ from .models import User
 
 MAX_FAILED = 5
 LOCKOUT_MINUTES = 15
+OTP_TTL_MINUTES = 5
 
 
 def _device_hash(request):
@@ -160,21 +161,81 @@ def revoke_other_sessions(user, request, session_key=None):
 
 
 def generate_otp(user):
-    """Generate a 6-digit OTP valid for 5 minutes (demo: stored hashed on user)."""
+    """Generate a 6-digit OTP valid for OTP_TTL_MINUTES (demo: stored hashed on user)."""
     code = f"{secrets.randbelow(1000000):06d}"
     user.mfa_secret = hashlib.sha256(code.encode()).hexdigest()[:12]
-    user.save(update_fields=["mfa_secret"])
+    user.otp_generated_at = timezone.now()
+    user.save(update_fields=["mfa_secret", "otp_generated_at"])
     return code  # in production this is sent via SMS/email, never displayed
 
 
+def _otp_expired(user):
+    if not user.otp_generated_at:
+        return True   # secret without timestamp is unusable (legacy rows)
+    return timezone.now() > user.otp_generated_at + timedelta(minutes=OTP_TTL_MINUTES)
+
+
 def verify_otp(user, code):
+    """Single-use, time-limited verification. Expired codes fail closed."""
     if not user.mfa_secret or not code:
+        return False
+    if _otp_expired(user):
+        user.mfa_secret = ""
+        user.save(update_fields=["mfa_secret"])
         return False
     ok = hashlib.sha256(code.encode()).hexdigest()[:12] == user.mfa_secret
     if ok:
         user.mfa_secret = ""
         user.save(update_fields=["mfa_secret"])
     return ok
+
+
+# ----------------------------------------------------------- MFA self-service
+
+class MFAError(Exception):
+    def __init__(self, code):
+        super().__init__(code)
+        self.code = code
+
+
+def start_mfa_enable(user, request=None):
+    """Issue + deliver an OTP that proves control of the second factor."""
+    from apps.audit.services import record as audit
+    import logging
+
+    code = generate_otp(user)
+    logging.getLogger("bankio.challenge").info(
+        "[step-up] mfa enable code for %s: %s (valid %s minutes)",
+        user.username, code, OTP_TTL_MINUTES)
+    audit(actor=user, action="MFA_ENABLE_STARTED", request=request,
+          metadata={"expires_in_minutes": OTP_TTL_MINUTES})
+    return code
+
+
+def confirm_mfa_enable(user, code, request=None):
+    """Enable MFA only after a valid, unexpired code proves the second factor."""
+    from apps.audit.services import record as audit
+
+    if not verify_otp(user, code):
+        raise MFAError("INVALID_OR_EXPIRED_CODE")
+    user.mfa_enabled = True
+    user.save(update_fields=["mfa_enabled"])
+    audit(actor=user, action="MFA_ENABLED", request=request)
+    return True
+
+
+def disable_mfa(user, password, request=None):
+    """Disable MFA only after password reauthentication — never via a plain
+    session-authenticated POST."""
+    from apps.audit.services import record as audit
+
+    if not password or not user.check_password(password):
+        raise MFAError("REAUTHENTICATION_REQUIRED")
+    user.mfa_enabled = False
+    user.mfa_secret = ""
+    user.save(update_fields=["mfa_enabled", "mfa_secret"])
+    audit(actor=user, action="MFA_DISABLED", request=request)
+    return True
 
 
 class LoginLocked(Exception):
@@ -211,7 +272,12 @@ def attempt_login(username, password, request):
     register_device(user, request)
 
     if user.mfa_enabled:
-        generate_otp(user)  # would be delivered out-of-band; demo seeds disable MFA or expose via mailhog-style log
+        code = generate_otp(user)
+        import logging
+
+        logging.getLogger("bankio.challenge").info(
+            "[step-up] mfa login code for %s: %s (valid %s minutes)",
+            user.username, code, OTP_TTL_MINUTES)
         return user, True
 
     from apps.audit.services import record

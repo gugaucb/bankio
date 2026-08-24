@@ -296,6 +296,27 @@ def security_view(request):
                     messages.success(request, f"{n} other session(s) signed out.")
             except SessionError:
                 pass
+        elif "mfa_enable_start" in request.POST or "mfa_enable_confirm" in request.POST \
+                or "mfa_disable" in request.POST:
+            from .services import MFAError, confirm_mfa_enable, disable_mfa, start_mfa_enable
+
+            try:
+                if "mfa_enable_start" in request.POST:
+                    start_mfa_enable(u, request=request)
+                    messages.success(request,
+                                     "A confirmation code was sent to you. Enter it below to enable MFA.")
+                elif "mfa_enable_confirm" in request.POST:
+                    confirm_mfa_enable(u, request.POST.get("mfa_code") or "", request=request)
+                    messages.success(request, "MFA enabled.")
+                else:
+                    disable_mfa(u, request.POST.get("password") or "", request=request)
+                    messages.success(request, "MFA disabled.")
+                    return redirect("app_security")
+            except MFAError as e:
+                messages.error(request, {
+                    "INVALID_OR_EXPIRED_CODE": "Invalid or expired code.",
+                    "REAUTHENTICATION_REQUIRED": "Password incorrect — MFA is still enabled.",
+                }.get(e.code, str(e)))
         else:
             from .services import DeviceError, revoke_device, trust_device, untrust_device
 
@@ -362,6 +383,8 @@ def security_view(request):
         "sessions": sessions,
         "history_page": page,
         "history_entries": history_entries,
+        "mfa_enabled": u.mfa_enabled,
+        "mfa_confirm_open": request.POST.get("mfa_enable_start") == "1",
     })
 
 
