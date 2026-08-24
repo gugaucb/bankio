@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Statement {{ masked_number }} — Bankio{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto my-8 bg-white p-8 print:p-0">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="font-bold text-xl">Account Statement</h2>
+      <p class="text-xs text-gray-500">{{ account.get_type_display }} · {{ masked_number }} · {{ account.currency }}</p>
+    </div>
+    <div class="text-right">
+      <p class="text-xs text-gray-400">Balance</p>
+      <p class="font-bold">${{ balance|floatformat:2 }}</p>
+    </div>
+  </div>
+
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left border-b border-gray-200">
+        <th class="py-1.5">Date</th><th>Description</th><th>Type</th><th class="text-right">In</th><th class="text-right">Out</th><th class="text-right">Balance</th><th>Reference</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr class="border-b border-gray-50">
+        <td class="py-1.5 whitespace-nowrap">{{ line.timestamp|date:"d M Y H:i" }}</td>
+        <td>{{ line.description|default:line.operation_type }}</td>
+        <td>{{ line.operation_type }}</td>
+        <td class="text-right">{% if line.direction == 'IN' %}${{ line.amount|floatformat:2 }}{% endif %}</td>
+        <td class="text-right">{% if line.direction == 'OUT' %}${{ line.amount|floatformat:2 }}{% endif %}</td>
+        <td class="text-right">${{ line.balance_after|floatformat:2 }}</td>
+        <td class="font-mono text-xs">{{ line.operation_reference }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="py-4 text-center text-gray-400">No movements.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if truncated %}<p class="text-xs text-gray-400 mt-3">Showing first 300 movements; export CSV for the full history.</p>{% endif %}
+  <p class="text-[11px] text-gray-400 mt-6">Generated read-only from Bankio's ledger. Verify via references above.</p>
+
+  <div class="mt-6 print:hidden">
+    <button onclick="window.print()" class="btn-primary">Print / Save PDF</button>
+  </div>
+</div>
+{% endblock %}
