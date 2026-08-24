@@ -20,6 +20,20 @@ class CardDeclined(Exception):
         self.reason = reason
 
 
+def resume_purchase(*, card_id, merchant, amount, facts, code, challenge_id,
+                    online=False, international=False):
+    """Resume a STEP_UP_REQUIRED purchase with its exact original facts.
+
+    Facts are re-validated against the material hash inside the gate; the
+    ledger idempotency marker guarantees a single settled transaction."""
+    # facts carry the internal (prefixed) marker; purchase() prefixes again
+    raw_key = (facts.get("idempotency_key") or "").removeprefix("card-purchase:")
+    return purchase(card_id=card_id, merchant=merchant, amount_raw=amount,
+                    online=online, international=international,
+                    idempotency_key=raw_key or None,
+                    step_up_code=code, step_up_challenge_id=challenge_id)
+
+
 def _assert_owner(card, actor):
     if not getattr(actor, "is_bank_staff", False) and card.account.customer_id != actor.id:
         raise PermissionDenied("Not your card")
@@ -68,13 +82,82 @@ def report_lost_or_stolen(actor, card_id, stolen=False):
     return card
 
 
-@transaction.atomic
-def purchase(card_id, merchant, amount_raw, online=False, international=False, atm=False, idempotency_key=None):
-    """Simulated acquirer request. Declines enforce card state and limits; posts ledger."""
+def purchase(card_id, merchant, amount_raw, online=False, international=False, atm=False,
+             idempotency_key=None, step_up_code=None, step_up_challenge_id=None):
+    """Simulated acquirer request. Declines enforce card state and limits; posts ledger.
+
+    The risk gate runs OUTSIDE the settlement transaction so challenge evidence
+    survives an aborted purchase (INV 9). A presented step-up code satisfies a
+    pending bound challenge exactly once before settlement; without it, an
+    effective CHALLENGE declines with STEP_UP_REQUIRED after issuing + delivering
+    a challenge. The engine re-runs on every attempt — a confirmed challenge can
+    never bypass a fresh BLOCK."""
     amount = Decimal(str(amount_raw)).quantize(Decimal("0.01"))
     if amount <= 0:
         raise CardDeclined("INVALID_AMOUNT")
     key = f"card-purchase:{idempotency_key}" if idempotency_key else None
+    card = Card.objects.select_related("account__customer", "account__ledger_account").get(pk=card_id)
+    if key:
+        # replays never re-enter the risk gate (authoritative check under
+        # the card lock still guards the settlement itself)
+        settled = ledger.find_idempotent(key)
+        if settled:
+            return CardTransaction.objects.get(pk=settled.result["tx_id"])
+
+    # ---- risk gate (outside tx: INV 9) -------------------------------------
+    ev = _card_risk_observation(card, merchant, amount, online, international)
+    if ev is not None:
+        from apps.fraud import modes
+        from apps.fraud.gate import RiskGateIntervention, enforce
+
+        facts = {"amount": str(amount), "card": str(card.pk), "merchant": merchant,
+                 "idempotency_key": key or ""}
+        effective = modes.effective_decision(ev)
+        enforcing_block = ev.engine_mode == "ENFORCEMENT" and ev.decision == "BLOCK"
+        if effective == "CHALLENGE" and not enforcing_block:
+            if step_up_code and step_up_challenge_id:
+                from apps.fraud.challenge import ChallengeError
+                from apps.fraud.challenge_guard import confirm
+
+                try:
+                    confirm(step_up_challenge_id, card.account.customer,
+                            step_up_code, facts, f"CARD_PURCHASE:{key}")
+                except ChallengeError as exc:
+                    _decline_row(card, merchant, amount, online, international, str(exc))
+                    raise CardDeclined(str(exc))
+                # verified & consumed → settlement proceeds below, once per key
+            else:
+                from apps.fraud.challenge_delivery import issue_and_deliver
+
+                ch, _code = issue_and_deliver(ev, card.account.customer, facts)
+                _decline_row(card, merchant, amount, online, international,
+                             "STEP_UP_REQUIRED")
+                declined = CardDeclined("STEP_UP_REQUIRED")
+                declined.challenge_id = ch.pk
+                declined.facts = facts
+                raise declined
+        else:
+            try:
+                enforce(ev)
+            except RiskGateIntervention as g:
+                _decline_row(card, merchant, amount, online, international, g.action)
+                raise CardDeclined(g.action)
+
+    return _purchase_atomic(card_id=card_id, merchant=merchant, amount=amount,
+                            online=online, international=international, atm=atm, key=key)
+
+
+def _decline_row(card, merchant, amount, online, international, reason):
+    CardTransaction.objects.create(
+        card=card, merchant=merchant, amount=amount,
+        international=international, online=online,
+        declined=True, decline_reason=reason,
+    )
+
+
+@transaction.atomic
+def _purchase_atomic(*, card_id, merchant, amount, online, international, atm, key):
+    """Hard controls + settlement under the card lock."""
     card = Card.objects.select_for_update().select_related("account__ledger_account").get(pk=card_id)
     # idempotency replay must be checked only AFTER taking the card lock,
     # so a concurrent retry waits for the first attempt to commit
@@ -83,11 +166,7 @@ def purchase(card_id, merchant, amount_raw, online=False, international=False, a
         return CardTransaction.objects.get(pk=existing.result["tx_id"])
 
     def decline(reason):
-        CardTransaction.objects.create(
-            card=card, merchant=merchant, amount=amount,
-            international=international, online=online,
-            declined=True, decline_reason=reason,
-        )
+        _decline_row(card, merchant, amount, online, international, reason)
         raise CardDeclined(reason)
 
     if card.is_expired:
@@ -110,17 +189,6 @@ def purchase(card_id, merchant, amount_raw, online=False, international=False, a
     )
     if spent + amount > card.daily_limit:
         decline("DAILY_LIMIT_EXCEEDED")
-
-    # full enforcement (spec PART 39): engine decisions now decline purchases.
-    # Hard controls above remain decisive regardless of score (spec PART 21).
-    ev = _card_risk_observation(card, merchant, amount, online, international)
-    if ev is not None:
-        from apps.fraud.gate import RiskGateIntervention, enforce
-
-        try:
-            enforce(ev)
-        except RiskGateIntervention as g:
-            decline(g.action)  # records a declined CardTransaction row
 
     account = card.account
     if card.type == "DEBIT_CARD":
