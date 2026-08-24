@@ -1,11 +1,12 @@
 from django.urls import path
 
-from . import views
+from . import challenge_views, views
 
 app_name = "fraud"
 
 urlpatterns = [
     path("fraud/", views.dashboard, name="dashboard"),
+    path("security/challenge/<int:challenge_id>/", challenge_views.challenge_detail, name="stepup_challenge"),
     path("fraud/alerts/", views.alert_queue, name="alert_queue"),
     path("fraud/cases/<int:case_id>/", views.case_view, name="case_view"),
     path("fraud/alerts/<int:alert_id>/acknowledge/", views.acknowledge_alert, name="acknowledge_alert"),

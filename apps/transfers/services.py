@@ -101,13 +101,15 @@ def _risk_gate(actor, source, amount, destination, beneficiary, key,
     effective = modes.effective_decision(ev)
 
     if effective == "CHALLENGE":
-        from apps.fraud.challenge import issue_challenge
+        from apps.fraud.challenge_delivery import issue_and_deliver
 
         facts = {"amount": str(amount), "beneficiary": str(beneficiary.pk if beneficiary else ""),
                  "idempotency_key": key}
-        ch, _code = issue_challenge(ev, source.customer, facts)
-        raise TransferError("STEP_UP_REQUIRED",
+        ch, _code = issue_and_deliver(ev, source.customer, facts, actor=actor)
+        err = TransferError("STEP_UP_REQUIRED",
                             f"Step-up verification required (challenge {ch.pk})")
+        err.challenge_id = ch.pk
+        raise err
 
     raw = ev.decision
     enforcing = ev.engine_mode == "ENFORCEMENT"

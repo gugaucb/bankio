@@ -1,0 +1,36 @@
+{% extends "dashboard/shell.html" %}
+{% block page %}
+<div class="max-w-md mx-auto bg-white rounded-2xl border border-gray-100 p-6">
+  <div class="flex items-center gap-3 mb-4">
+    <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-900 grid place-items-center text-lg">🔐</div>
+    <div>
+      <h2 class="font-semibold">Step-up verification</h2>
+      <p class="text-xs text-gray-500">{{ operation_type|lower }}{% if amount %} · {{ currency }} {{ amount }}{% endif %}</p>
+    </div>
+  </div>
+
+  {% if state_message %}
+    <p class="text-sm rounded-lg px-3 py-2 bg-red-50 text-red-700 mb-4">{{ state_message }}</p>
+    <a href="/app/" class="text-sm text-emerald-800 font-semibold">← Back to dashboard</a>
+  {% elif challenge.status == "VERIFIED" %}
+    <p class="text-sm rounded-lg px-3 py-2 bg-emerald-50 text-emerald-800 mb-4">Code confirmed. You can return to your operation.</p>
+  {% elif challenge.status == "PENDING" %}
+    {% if error_message %}
+      <p class="text-sm rounded-lg px-3 py-2 bg-red-50 text-red-700 mb-4">{{ error_message }}</p>
+    {% endif %}
+    <p class="text-sm text-gray-600 mb-4">We sent a 6-digit code to you. Enter it below to confirm this operation.</p>
+    <form method="post" class="flex flex-col gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="fact_amount" value="{{ request.POST.fact_amount|default:'' }}">
+      <input type="hidden" name="fact_beneficiary" value="{{ request.POST.fact_beneficiary|default:'' }}">
+      <input type="hidden" name="fact_source_account" value="{{ request.POST.fact_source_account|default:'' }}">
+      <input type="hidden" name="fact_destination_account" value="{{ request.POST.fact_destination_account|default:'' }}">
+      <input type="hidden" name="fact_idempotency_key" value="{{ request.POST.fact_idempotency_key|default:'' }}">
+      <input type="text" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+             placeholder="000000" required autofocus
+             class="tracking-[0.5em] text-center text-xl rounded-xl border-gray-200 focus:border-emerald-700 focus:ring-emerald-700">
+      <button type="submit" class="btn-primary w-full">Confirm code</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}
