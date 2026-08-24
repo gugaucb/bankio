@@ -143,8 +143,14 @@ def purchase(card_id, merchant, amount_raw, online=False, international=False, a
                 _decline_row(card, merchant, amount, online, international, g.action)
                 raise CardDeclined(g.action)
 
-    return _purchase_atomic(card_id=card_id, merchant=merchant, amount=amount,
-                            online=online, international=international, atm=atm, key=key)
+    try:
+        return _purchase_atomic(card_id=card_id, merchant=merchant, amount=amount,
+                                online=online, international=international, atm=atm, key=key)
+    except CardDeclined as exc:
+        # the settlement transaction has already aborted: no on_commit —
+        # emit the decline notification directly (never fatal)
+        _card_declined_notification(card, merchant, amount, exc.reason, key)
+        raise
 
 
 def _decline_row(card, merchant, amount, online, international, reason):
@@ -215,7 +221,55 @@ def _purchase_atomic(*, card_id, merchant, amount, online, international, atm, k
         international=international, online=online, journal=journal,
     )
     ledger.record_idempotent(key, "CARD_PURCHASE", journal, {"tx_id": tx.pk})
+    transaction.on_commit(lambda: _card_approved_notification(tx.pk))
     return tx
+
+
+# --- FASE 6 customer notifications (in-app, post-commit, never critical) ---
+
+_CARD_DECLINE_MESSAGES = {
+    "FROZEN": "Your card is frozen.",
+    "EXPIRED": "Your card has expired.",
+    "TX_LIMIT_EXCEEDED": "The purchase exceeded your per-transaction limit.",
+    "DAILY_LIMIT_EXCEEDED": "The purchase exceeded your daily limit.",
+    "ONLINE_DISABLED": "Online purchases are disabled for this card.",
+    "INTERNATIONAL_DISABLED": "International purchases are disabled for this card.",
+    "INSUFFICIENT_FUNDS": "Insufficient available funds.",
+    "CREDIT_LIMIT_EXCEEDED": "The purchase exceeded your credit limit.",
+}
+_CARD_GENERIC_DECLINE = ("The purchase could not be processed. "
+                         "If you believe this is an error, contact support.")
+
+
+def _card_declined_notification(card, merchant, amount, reason, idem_key):
+    from apps.notifications.services import notify
+
+    recipient = card.account.customer
+    recipient_id = recipient.pk if recipient is not None else None
+    message = _CARD_DECLINE_MESSAGES.get(reason, _CARD_GENERIC_DECLINE)
+    return notify(recipient=recipient, category="CARD",
+                  kind="CARD_PURCHASE_DECLINED",
+                  title="Purchase declined",
+                  body=(f"${amount} at {merchant} was declined. {message}"),
+                  metadata={"reason": reason},
+                  dedup_key=f"CARD_DECLINED:{idem_key}:{recipient_id}")
+
+
+def _card_approved_notification(tx_id):
+    from apps.notifications.services import notify
+
+    t = CardTransaction.objects.select_related(
+        "card__account__customer").filter(pk=tx_id).first()
+    if t is None or t.journal_id is None:
+        return  # no posted movement -> nothing to confirm to the customer
+    recipient = t.card.account.customer
+    recipient_id = recipient.pk
+    return notify(recipient=recipient, category="CARD",
+                  kind="CARD_PURCHASE_APPROVED",
+                  title="Purchase approved",
+                  body=f"${t.amount} at {t.merchant} was approved (ref {t.journal.reference}).",
+                  metadata={"reference": t.journal.reference},
+                  dedup_key=f"CARD_APPROVED:{t.journal.reference}:{recipient_id}")
 
 
 @transaction.atomic
