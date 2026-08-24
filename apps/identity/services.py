@@ -46,6 +46,12 @@ class DeviceError(Exception):
         self.code = code
 
 
+class SessionError(Exception):
+    def __init__(self, code):
+        super().__init__(code)
+        self.code = code
+
+
 def _own_device(user, device_pk):
     from .models import Device
 
@@ -92,6 +98,65 @@ def revoke_device(user, device_pk, request=None):
           metadata={"device": device.name[:80], "device_hash": device.device_id[:12]})
     device.delete()
     return device
+
+
+# ------------------------------------------------------------------ sessions
+
+def bind_session(request, user):
+    """Record minimal metadata for the freshly authenticated session.
+    Called right after auth.login() so the security UI can list real sessions."""
+    from .models import SessionRecord
+
+    SessionRecord.objects.update_or_create(
+        session_key=request.session.session_key,
+        defaults={
+            "user": user,
+            "user_agent": (request.META.get("HTTP_USER_AGENT") or "")[:200],
+            "device_hash": _device_hash(request),
+        },
+    )
+
+
+def _live_session_keys(user):
+    """session_keys of this user that still exist in the session store."""
+    from django.contrib.sessions.models import Session
+
+    keys = list(user.session_records.values_list("session_key", flat=True))
+    return {s.session_key for s in Session.objects.filter(session_key__in=keys)}
+
+
+def revoke_other_sessions(user, request, session_key=None):
+    """Revoke one other session, or all others when session_key is None.
+    Never touches the current session; foreign keys are ignored (no IDOR)."""
+    from apps.audit.services import record as audit
+    from django.contrib.sessions.models import Session
+
+    current_key = request.session.session_key
+    mine = {r.session_key: r for r in user.session_records.all()}
+    if session_key is not None:
+        if session_key == current_key:
+            raise SessionError("CURRENT_SESSION")
+        targets = [session_key] if session_key in mine else []
+    else:
+        targets = [k for k in mine if k != current_key]
+
+    live = _live_session_keys(user)
+    revoked_keys = []
+    for key in targets:
+        deleted, _ = Session.objects.filter(session_key=key).delete()
+        if deleted or key not in live:
+            mine[key].delete()
+            revoked_keys.append(key)
+
+    if not revoked_keys:
+        raise SessionError("SESSION_NOT_FOUND")
+    if session_key is not None:
+        audit(actor=user, action="SESSION_REVOKED", request=request,
+              metadata={"count": len(revoked_keys)})
+    else:
+        audit(actor=user, action="OTHER_SESSIONS_REVOKED", request=request,
+              metadata={"count": len(revoked_keys)})
+    return len(revoked_keys)
 
 
 def generate_otp(user):

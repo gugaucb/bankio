@@ -27,6 +27,9 @@ def login_view(request):
             if needs_otp:
                 return redirect("otp_verify")
             login(request, user)
+            from .services import bind_session
+
+            bind_session(request, user)
             audit(actor=user, action="LOGIN", request=request)
             return redirect("dashboard")
     else:
@@ -45,6 +48,9 @@ def otp_verify_view(request):
         form = OTPForm(request.POST)
         if form.is_valid() and verify_otp(user, form.cleaned_data["code"]):
             login(request, user)
+            from .services import bind_session
+
+            bind_session(request, user)
             del request.session["pending_otp_user"]
             audit(actor=user, action="LOGIN_MFA", request=request)
             return redirect("dashboard")

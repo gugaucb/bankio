@@ -70,5 +70,37 @@
     </ul>
   </section>
 
+  <!-- Sessions -->
+  <section class="card p-6">
+    <h3 class="font-semibold mb-1">Active Sessions</h3>
+    <p class="text-xs text-gray-400 mb-4">Browsers and apps currently signed in to your account.</p>
+    <ul class="divide-y divide-gray-50 text-sm">
+      {% for s in sessions %}
+      <li class="py-3 flex flex-wrap items-center gap-2 justify-between">
+        <div class="min-w-0">
+          <p class="font-medium truncate{% if s.current %} text-emerald-700{% endif %}">
+            {{ s.obj.user_agent|default:"Unknown device"|truncatechars:48 }}
+            {% if s.current %}<span class="ml-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold">This session</span>{% endif %}
+          </p>
+          <p class="text-xs text-gray-400">Signed in {{ s.obj.created_at|date:"d M Y, H:i" }}</p>
+        </div>
+        {% if not s.current %}
+        <form method="post" class="shrink-0">{% csrf_token %}
+          <input type="hidden" name="session" value="{{ s.obj.session_key }}">
+          <button name="revoke_session" value="1" class="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50">Sign out</button>
+        </form>
+        {% endif %}
+      </li>
+      {% empty %}
+      <li class="py-6 text-center text-gray-400">No active sessions recorded.</li>
+      {% endfor %}
+    </ul>
+    {% if sessions %}
+    <form method="post" class="mt-4">{% csrf_token %}
+      <button name="revoke_other_sessions" value="1" class="btn-primary">Sign out all other sessions</button>
+    </form>
+    {% endif %}
+  </section>
+
 </div>
 {% endblock %}

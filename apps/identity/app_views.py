@@ -282,28 +282,43 @@ def security_view(request):
         pw_error = "; ".join(" ".join(v) for v in form.errors.values())
 
     elif request.method == "POST":
-        from .services import DeviceError, revoke_device, trust_device, untrust_device
+        if "revoke_session" in request.POST or "revoke_other_sessions" in request.POST:
+            from .services import SessionError, revoke_other_sessions
 
-        device_pk = request.POST.get("device")
-        try:
-            if "trust_device" in request.POST:
-                trust_device(u, device_pk, request=request)
-                messages.success(request, "Device marked as trusted.")
-            elif "untrust_device" in request.POST:
-                untrust_device(u, device_pk, request=request)
-                messages.success(request, "Device trust revoked.")
-            elif "revoke_device" in request.POST:
-                revoke_device(u, device_pk, request=request)
-                messages.success(request, "Device removed.")
-            return redirect("app_security")
-        except (DeviceError, ValueError, TypeError):
-            # foreign/unknown ids are silent no-ops; back to the page
-            return redirect("app_security")
+            try:
+                if "revoke_session" in request.POST:
+                    revoke_other_sessions(u, request,
+                                          session_key=request.POST.get("session") or None)
+                    messages.success(request, "Session signed out.")
+                else:
+                    n = revoke_other_sessions(u, request)
+                    messages.success(request, f"{n} other session(s) signed out.")
+            except SessionError:
+                pass
+        else:
+            from .services import DeviceError, revoke_device, trust_device, untrust_device
+
+            try:
+                if "trust_device" in request.POST:
+                    trust_device(u, request.POST.get("device"), request=request)
+                    messages.success(request, "Device marked as trusted.")
+                elif "untrust_device" in request.POST:
+                    untrust_device(u, request.POST.get("device"), request=request)
+                    messages.success(request, "Device trust revoked.")
+                elif "revoke_device" in request.POST:
+                    revoke_device(u, request.POST.get("device"), request=request)
+                    messages.success(request, "Device removed.")
+            except (DeviceError, ValueError, TypeError):
+                # foreign/unknown ids are silent no-ops; back to the page
+                pass
+        return redirect("app_security")
 
     from apps.audit.models import AuditLog
 
     events = AuditLog.objects.filter(actor=u, action__startswith="LOGIN").order_by("-timestamp")[:10]
     recent_logins = [(e.action, e.timestamp, e.ip_address) for e in events]
+
+    from django.contrib.sessions.models import Session
 
     from .services import current_device_hash
 
@@ -311,10 +326,21 @@ def security_view(request):
     devices = []
     for d in u.devices.order_by("-last_seen"):
         devices.append({"obj": d, "current": d.device_id == current_hash})
+
+    # live sessions of this user only; stale records pruned on sight
+    live_keys = set(Session.objects.filter(
+        session_key__in=u.session_records.values_list("session_key", flat=True))
+        .values_list("session_key", flat=True))
+    current_key = request.session.session_key
+    u.session_records.exclude(session_key__in=live_keys).delete()
+    sessions = []
+    for s in u.session_records.order_by("-created_at"):
+        sessions.append({"obj": s, "current": s.session_key == current_key})
     return render(request, "dashboard/security.html", {
         "nav": "security", "page_heading": "Security",
         "recent_logins": recent_logins, "pw_error": pw_error,
         "devices": devices,
+        "sessions": sessions,
     })
 
 

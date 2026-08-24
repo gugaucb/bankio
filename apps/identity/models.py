@@ -54,3 +54,18 @@ class Device(models.Model):
 
     class Meta:
         unique_together = ("user", "device_id")
+
+
+class SessionRecord(models.Model):
+    """Minimal metadata for one login session (Django stores only the auth
+    payload in django_session — nothing a safe security UI could show).
+    Keyed by the real Django session_key; deleting both rows revokes access."""
+
+    session_key = models.CharField(max_length=64, unique=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="session_records")
+    created_at = models.DateTimeField(auto_now_add=True)
+    user_agent = models.CharField(max_length=200, blank=True)
+    device_hash = models.CharField(max_length=64, blank=True)
+
+    def __str__(self):
+        return f"session {self.session_key[:8]}… of {self.user}"
