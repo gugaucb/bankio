@@ -60,6 +60,16 @@ def user_create(request):
 
 @login_required
 @require_admin
+def admin_dashboard(request):
+    return render(request, "manager/admin_dashboard.html", {
+        "nav": "dashboard", "page_heading": "Admin Dashboard",
+        "stats": admin_services.admin_dashboard_stats(),
+        "recent_actions": admin_services.recent_admin_actions(limit=10),
+    })
+
+
+@login_required
+@require_admin
 def user_detail(request, user_id):
     user = admin_services.get_user(user_id)
     if user is None:
