@@ -242,6 +242,30 @@ class LoginLocked(Exception):
     pass
 
 
+def _login_risk_evaluation(user, request, device=None):
+    """Run the real LOGIN operation through the fraud engine.
+
+    Returns the RiskEvaluation (or None if evaluation could not run). The
+    engine itself persists FAILED snapshots before re-raising; in SHADOW mode
+    an engine error must not break authentication — evidence stays recorded.
+    Enforcement decisions are consumed by later rollout stages only.
+    """
+    from apps.fraud.auth_risk import evaluate_login
+    from apps.fraud.failsafe import record_failure
+
+    try:
+        return evaluate_login(
+            user,
+            request=request,
+            device_id=getattr(device, "device_id", "") or "",
+            ip=(request.META.get("REMOTE_ADDR") if request else "") or "",
+        )
+    except Exception as exc:
+        # FAILED snapshot persisted by the engine; strategy-standardized audit here
+        record_failure("LOGIN", exc, actor=user)
+        return None
+
+
 def attempt_login(username, password, request):
     """Returns (user, needs_otp). Raises LoginLocked when temporarily locked."""
     try:
@@ -269,7 +293,14 @@ def attempt_login(username, password, request):
     user.failed_login_count = 0
     user.locked_until = None
     user.save(update_fields=["failed_login_count", "locked_until"])
-    register_device(user, request)
+    device = register_device(user, request)
+
+    # Risk evaluation runs AFTER credential validation and OUTSIDE any atomic
+    # block, so the evidence (RiskEvaluation) survives aborted logins (INV 9).
+    # Order: lockout → credentials → device → RISK → OTP → session → audit.
+    # In SHADOW mode nothing here can block a valid login; enforcement comes
+    # only in later rollout stages.
+    evaluation = _login_risk_evaluation(user, request, device)
 
     if user.mfa_enabled:
         code = generate_otp(user)
