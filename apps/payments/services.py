@@ -102,7 +102,24 @@ def _pay_bill_atomic(*, actor, account_id, bill_id, idempotency_key):
         account=account, bill=bill, amount=amount,
         idempotency_key=idempotency_key, journal=journal, created_by=actor,
     )
+    transaction.on_commit(lambda: _payment_completed_notification(payment.pk))
     return payment, True
+
+
+def _payment_completed_notification(payment_id):
+    # FASE 6: customer notification AFTER the settlement commit only.
+    from apps.notifications.services import notify
+
+    p = Payment.objects.select_related("bill", "account__customer").filter(
+        pk=payment_id).first()
+    if p is None:
+        return
+    notify(recipient=p.created_by, category="PAYMENT", kind="PAYMENT_COMPLETED",
+           title="Payment completed",
+           body=(f"Your payment of ${p.amount} to {p.bill.biller} was completed "
+                 f"(ref {p.journal.reference})."),
+           metadata={"reference": p.journal.reference},
+           dedup_key=f"PAYMENT_COMPLETED:{p.idempotency_key}:{p.created_by_id}")
 
 
 def _payment_risk_observation(actor, account, amount, bill, idempotency_key):
