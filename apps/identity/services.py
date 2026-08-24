@@ -242,6 +242,45 @@ class LoginLocked(Exception):
     pass
 
 
+class LoginRiskBlocked(Exception):
+    """The fraud engine's effective decision refuses this login (fail-closed
+    or BLOCK under enforcement). Evidence is already persisted by the engine."""
+
+
+def _effective_login_action(evaluation):
+    """Server-side-only mapping of a stored LOGIN evaluation to an action.
+
+    The decision comes exclusively from the RiskEvaluation row + current
+    engine mode — never from client input. SHADOW/DISABLED never interfere;
+    an engine failure follows the failsafe matrix (LOGIN = FAIL_CLOSED, so
+    outside observational modes the login must NOT proceed).
+    """
+    from apps.fraud.failsafe import FAIL_OPEN, resolve_failure
+    from apps.fraud.models import RiskEvaluation
+    from apps.fraud.modes import effective_decision, get_mode
+
+    if evaluation is None:
+        if resolve_failure("LOGIN") != FAIL_OPEN and get_mode() not in (
+            RiskEvaluation.EngineMode.SHADOW, "DISABLED"):
+            return "BLOCK"
+        return "ALLOW"
+    action = effective_decision(evaluation)
+    if action == RiskEvaluation.Decision.BLOCK:
+        return "BLOCK"
+    if action == RiskEvaluation.Decision.CHALLENGE:
+        return "CHALLENGE"
+    return "ALLOW"
+
+
+def _deliver_otp(user, purpose):
+    code = generate_otp(user)
+    import logging
+
+    logging.getLogger("bankio.challenge").info(
+        "[step-up] %s code for %s: %s (valid %s minutes)",
+        purpose, user.username, code, OTP_TTL_MINUTES)
+
+
 def _login_risk_evaluation(user, request, device=None):
     """Run the real LOGIN operation through the fraud engine.
 
@@ -302,13 +341,18 @@ def attempt_login(username, password, request):
     # only in later rollout stages.
     evaluation = _login_risk_evaluation(user, request, device)
 
-    if user.mfa_enabled:
-        code = generate_otp(user)
-        import logging
+    # CHALLENGE_ONLY/enforcement: the stored evaluation decides. CHALLENGE
+    # reuses the existing OTP step-up (same pending_otp_user flow as MFA) —
+    # users without MFA enabled get the same one-time challenge infrastructure.
+    action = _effective_login_action(evaluation)
+    if action == "BLOCK":
+        from apps.audit.services import record
 
-        logging.getLogger("bankio.challenge").info(
-            "[step-up] mfa login code for %s: %s (valid %s minutes)",
-            user.username, code, OTP_TTL_MINUTES)
+        record(actor=user, action="LOGIN_RISK_DENIED", request=request,
+               metadata={"evaluation": getattr(evaluation, "pk", None)})
+        raise LoginRiskBlocked("sign-in refused by risk policy")
+    if action == "CHALLENGE" or user.mfa_enabled:
+        _deliver_otp(user, "mfa login" if user.mfa_enabled else "risk challenge")
         return user, True
 
     from apps.audit.services import record
