@@ -1,0 +1,39 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Engine Mode — Bankio{% endblock %}
+{% block page %}
+<div class="space-y-5">
+  <h2 class="text-xl font-bold">Security Operations — Engine Mode</h2>
+
+  {% if messages %}{% for m in messages %}<p class="rounded-lg px-3 py-2 text-sm {% if m.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-emerald-50 text-emerald-700{% endif %}">{{ m }}</p>{% endfor %}{% endif %}
+
+  <div class="card p-6">
+    <p class="text-sm text-gray-500">Current mode</p>
+    <p class="text-3xl font-bold mb-4">{{ current_mode }}</p>
+    {% if can_change %}
+    <form method="post" class="flex items-center gap-3">
+      {% csrf_token %}
+      <select name="mode" class="rounded-lg border px-3 py-2 text-sm">
+        {% for value, label in modes %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+      <button class="btn-primary">Change mode</button>
+    </form>
+    {% else %}
+    <p class="text-sm text-gray-400">Read-only: change_fraud_mode permission required.</p>
+    {% endif %}
+    <p class="text-xs text-gray-400 mt-3">Progression: SHADOW → CHALLENGE_ONLY → ENFORCEMENT. Changes are audited (FRAUD_MODE_CHANGED).</p>
+  </div>
+
+  <div class="card p-6">
+    <h3 class="font-semibold mb-3">Mode change history</h3>
+    {% if history %}
+    <ul class="divide-y divide-gray-50 text-sm">
+      {% for h in history %}
+      <li class="py-2 flex justify-between"><span>{{ h.metadata.from }} → {{ h.metadata.to }}</span><span class="text-gray-400">{{ h.timestamp|date:"d M Y, H:i" }} · {{ h.actor.username|default:"system" }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="text-sm text-gray-400">No mode changes recorded.</p>{% endif %}
+  </div>
+
+  <a href="{% url 'fraud:secops_health' %}" class="btn-primary inline-block">Back to health</a>
+</div>
+{% endblock %}

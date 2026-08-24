@@ -14,4 +14,5 @@ urlpatterns = [
     path("fraud/cases/<int:case_id>/decide/", views.decide_case, name="decide_case"),
     # FASE 4.4 — Security Operations console (staff only)
     path("secops/health/", security_ops.engine_health, name="secops_health"),
+    path("secops/mode/", security_ops.mode_control, name="secops_mode"),
 ]

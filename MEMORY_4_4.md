@@ -20,7 +20,7 @@ AUDITOR (+superuser). CUSTOMER 403, anônimo redirect.
 | Branch | Escopo | Status | Testes | Juiz |
 |---|---|---|---|---|
 | feat/secops-engine-health | painel saúde read-only | concluído | 582 passed | PASS |
-| feat/secops-mode-control | modo atual + troca RBAC + histórico | pendente | — | — |
+| feat/secops-mode-control | modo atual + troca RBAC + histórico | concluído | 587 passed | PASS |
 | feat/secops-evaluation-browser | lista paginada + detail | pendente | — | — |
 
 ## Decisões
