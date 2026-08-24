@@ -21,12 +21,19 @@ def evaluate_profile_change(user, *, request=None, operation_type="PROFILE_UPDAT
         return evaluate_operation(ctx)
     except Exception as exc:
         from apps.audit.services import record as audit
+        from .models import RiskEvaluation
+        from .modes import get_mode
 
         audit(
             action="RISK_EVALUATION_ERROR",
             actor=user,
             metadata={"scope": "profile_change", "operation": operation_type, "error": str(exc)[:200]},
         )
+        if get_mode() in (RiskEvaluation.EngineMode.CHALLENGE_ONLY,
+                          RiskEvaluation.EngineMode.ENFORCEMENT):
+            # enforcement modes: the caller MUST see the failure and apply the
+            # failsafe matrix — never an except-pass silent release.
+            raise
         return None
 
 

@@ -265,22 +265,58 @@ def cards_view(request):
 def security_view(request):
     u = request.user
     pw_error = None
+    risk_confirm_open = False
     if request.method == "POST" and "change_password" in request.POST:
         form = ChangePasswordForm(user=u, data=request.POST)
         if form.is_valid():
-            user = form.save()
-            update_session_auth_hash(request, user)
-            audit(actor=u, action="PASSWORD_CHANGED", request=request)
-            # shadow risk observation on sensitive profile change (spec PART 27)
+            # Risk runs BEFORE the password is touched: a challenge failure or
+            # a block must leave the old password intact. Under enforcement an
+            # engine error propagates out of evaluate_profile_change (no
+            # except-pass) and lands here as fail-closed BLOCK.
             from apps.fraud.profile_risk import evaluate_profile_change
+            from .services import sensitive_action_decision
 
+            evaluation = None
             try:
-                evaluate_profile_change(u, request=request, operation_type="PASSWORD_CHANGE")
+                evaluation = evaluate_profile_change(
+                    u, request=request, operation_type="PASSWORD_CHANGE")
+                action = sensitive_action_decision(evaluation)
             except Exception:
-                pass  # never fatal; evaluate_profile_change already audits errors
-            messages.success(request, "Password changed successfully.")
-            return redirect("app_security")
-        pw_error = "; ".join(" ".join(v) for v in form.errors.values())
+                action = "BLOCK"
+
+            if action == "CHALLENGE":
+                code = request.POST.get("risk_code", "")
+                if code:
+                    from .services import verify_otp
+
+                    if verify_otp(u, code):
+                        action = "ALLOW"      # second factor satisfied
+                    else:
+                        pw_error = "Invalid or expired verification code."
+                        action = None         # password NOT changed
+                else:
+                    from .services import _deliver_otp
+
+                    _deliver_otp(u, "password change")
+                    risk_confirm_open = True
+                    action = None             # awaiting the code; not applied yet
+            elif action == "BLOCK":
+                from apps.audit.services import record as audit_record
+
+                audit_record(actor=u, action="PASSWORD_CHANGE_BLOCKED",
+                             request=request,
+                             metadata={"evaluation": getattr(evaluation, "pk", None)})
+                messages.error(request, "Password change was not applied.")
+                return redirect("app_security")
+
+            if action == "ALLOW":
+                user = form.save()
+                update_session_auth_hash(request, user)
+                audit(actor=u, action="PASSWORD_CHANGED", request=request)
+                messages.success(request, "Password changed successfully.")
+                return redirect("app_security")
+        else:
+            pw_error = "; ".join(" ".join(v) for v in form.errors.values())
 
     elif request.method == "POST":
         if "revoke_session" in request.POST or "revoke_other_sessions" in request.POST:
@@ -385,6 +421,7 @@ def security_view(request):
         "history_entries": history_entries,
         "mfa_enabled": u.mfa_enabled,
         "mfa_confirm_open": request.POST.get("mfa_enable_start") == "1",
+        "risk_confirm_open": risk_confirm_open,
     })
 
 
