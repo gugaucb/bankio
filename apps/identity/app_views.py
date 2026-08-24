@@ -5,6 +5,7 @@ All views are login_required and scoped to request.user — a customer only
 ever sees their own data.
 """
 import json
+import uuid
 from datetime import timedelta
 from decimal import Decimal
 
@@ -313,6 +314,13 @@ def security_view(request):
                 user = form.save()
                 update_session_auth_hash(request, user)
                 audit(actor=u, action="PASSWORD_CHANGED", request=request)
+                from apps.notifications.services import notify
+
+                notify(recipient=u, category="SECURITY", kind="PASSWORD_CHANGED",
+                       title="Password changed",
+                       body="Your password was changed. If this was not you, "
+                            "contact support immediately.",
+                       dedup_key=f"PASSWORD_CHANGED:{u.pk}:{uuid.uuid4().hex}")
                 messages.success(request, "Password changed successfully.")
                 return redirect("app_security")
         else:

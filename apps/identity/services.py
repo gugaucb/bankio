@@ -27,6 +27,16 @@ def register_device(user, request):
     device, created = Device.objects.get_or_create(
         user=user, device_id=did, defaults={"name": request.META.get("HTTP_USER_AGENT", "")[:120]}
     )
+    if created:
+        # FASE 6: only a genuinely first-seen device row is "new" — trusted
+        # devices logging in again must never trigger this.
+        from apps.notifications.services import notify
+
+        notify(recipient=user, category="SECURITY", kind="NEW_DEVICE",
+               title="New device sign-in",
+               body="Your account was accessed from a new device.",
+               metadata={"device": (device.name or "")[:80]},
+               dedup_key=f"NEW_DEVICE:{user.pk}:{did}")
     return device
 
 
@@ -221,6 +231,12 @@ def confirm_mfa_enable(user, code, request=None):
     user.mfa_enabled = True
     user.save(update_fields=["mfa_enabled"])
     audit(actor=user, action="MFA_ENABLED", request=request)
+    from apps.notifications.services import notify
+
+    notify(recipient=user, category="SECURITY", kind="MFA_ENABLED",
+           title="MFA enabled",
+           body="Two-factor authentication was enabled on your account.",
+           dedup_key=f"MFA_ENABLED:{user.pk}:{user.pk}")
     return True
 
 
@@ -235,6 +251,13 @@ def disable_mfa(user, password, request=None):
     user.mfa_secret = ""
     user.save(update_fields=["mfa_enabled", "mfa_secret"])
     audit(actor=user, action="MFA_DISABLED", request=request)
+    from apps.notifications.services import notify
+
+    notify(recipient=user, category="SECURITY", kind="MFA_DISABLED",
+           title="MFA disabled",
+           body="Two-factor authentication was disabled on your account. "
+                "If this was not you, contact support immediately.",
+           dedup_key=f"MFA_DISABLED:{user.pk}:{user.pk}")
     return True
 
 

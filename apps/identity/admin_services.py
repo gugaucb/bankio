@@ -122,6 +122,9 @@ def block_user(*, actor, user_id, reason, request=None):
     _kill_sessions(user)
     _audit_admin_action(actor, "ADMIN_USER_BLOCKED", user, request=request,
                         reason=reason.strip()[:500])
+    transaction.on_commit(lambda: _user_state_notification(user.pk, "USER_BLOCKED",
+                                                           "Account blocked",
+                                                           "Your account was blocked by an administrator. Contact support for details."))
     return user
 
 
@@ -142,7 +145,21 @@ def unblock_user(*, actor, user_id, reason="", request=None):
     user.save(update_fields=["is_active"])
     _audit_admin_action(actor, "ADMIN_USER_UNBLOCKED", user, request=request,
                         reason=reason.strip()[:500])
+    transaction.on_commit(lambda: _user_state_notification(user.pk, "USER_UNBLOCKED",
+                                                           "Account unblocked",
+                                                           "Your account was unblocked and you can sign in again."))
     return user
+
+
+def _user_state_notification(user_id, kind, title, body):
+    # FASE 6: target-facing security notification AFTER the state commit only.
+    from apps.notifications.services import notify
+
+    target = User.objects.filter(pk=user_id).first()
+    if target is None:
+        return
+    notify(recipient=target, category="SECURITY", kind=kind, title=title,
+           body=body, dedup_key=f"{kind}:{user_id}:{target.is_active}")
 
 
 def get_user(user_id):
