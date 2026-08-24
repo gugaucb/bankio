@@ -18,7 +18,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import redirect, render
 
-from .challenge import ChallengeError, _expire_if_due, verify_challenge
+from .challenge import ChallengeError, _expire_if_due
 from .models import RiskChallenge
 
 # whitelisted material facts a resuming client may carry back to us;
@@ -118,7 +118,9 @@ def challenge_detail(request, challenge_id):
             return _resume_transfer(request, challenge, facts)
         else:
             try:
-                verify_challenge(challenge, request.POST.get("code") or "", facts)
+                from .challenge_guard import attempt
+
+                attempt(challenge.pk, request.user, request.POST.get("code") or "", facts)
             except ChallengeError as exc:
                 error = str(exc)
                 # re-read: verify may have transitioned the challenge (e.g.
