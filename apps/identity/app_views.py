@@ -477,7 +477,8 @@ def _owned_journal_or_404(user, reference):
     from apps.ledger.models import JournalEntry
 
     journal = JournalEntry.objects.filter(reference=reference).first()
-    if journal is None:
+    if journal is None or journal.status != "POSTED":
+        # drafts are uncommitted financial facts and must never be visible
         raise Http404("Transaction not found")
     owned = _A.objects.filter(
         customer=user, ledger_account__entries__journal=journal
