@@ -468,3 +468,99 @@ def account_statement_view(request, account_id):
         "source_choices": [("TRANSFER", "Transfers"), ("PAYMENT", "Payments"),
                            ("CARD", "Cards"), ("OTHER", "Other")],
     })
+
+
+def _owned_journal_or_404(user, reference):
+    """Resolve a journal by its public reference and enforce ownership."""
+    from django.http import Http404
+    from apps.accounts.models import Account as _A
+    from apps.ledger.models import JournalEntry
+
+    journal = JournalEntry.objects.filter(reference=reference).first()
+    if journal is None:
+        raise Http404("Transaction not found")
+    owned = _A.objects.filter(
+        customer=user, ledger_account__entries__journal=journal
+    ).exists()
+    if not owned:
+        # foreign or nonexistent — indistinguishable responses
+        raise Http404("Transaction not found")
+    return journal
+
+
+def _operation_for(journal):
+    from apps.cards.models import CardTransaction
+    from apps.payments.models import Payment
+    from apps.transfers.models import Transfer
+
+    t = Transfer.objects.filter(journal=journal).select_related(
+        "source_account", "destination_account", "beneficiary").first()
+    if t:
+        return "TRANSFER", t
+    p = Payment.objects.filter(journal=journal).select_related("bill").first()
+    if p:
+        return "PAYMENT", p
+    c = CardTransaction.objects.filter(journal=journal).first()
+    if c:
+        return "CARD", c
+    return "JOURNAL", None
+
+
+@login_required
+@customer_only
+def transaction_detail_view(request, reference):
+    from django.http import Http404
+
+    journal = _owned_journal_or_404(request.user, reference)
+    op_type, op = _operation_for(journal)
+    reversal = journal.reversed_by.first()
+    original = journal.reverses
+    ctx = {
+        "nav": "transactions", "page_heading": "Transaction",
+        "journal": journal, "op_type": op_type, "op": op,
+        "reversal_reference": reversal.reference if reversal else None,
+        "original_reference": original.reference if original else None,
+        "receipt_available": op is not None and getattr(op, "status", None) in ("COMPLETED", "REVERSED"),
+    }
+    if op_type == "TRANSFER":
+        ctx["counterparty"] = (
+            op.destination_account.account_number[-4:] if op.destination_account_id
+            else (op.beneficiary.name if op.beneficiary_id else "External"))
+        ctx["direction"] = "OUT" if op.source_account.customer_id == request.user.id else "IN"
+    elif op_type == "PAYMENT":
+        ctx["counterparty"] = op.bill.biller
+        ctx["direction"] = "OUT"
+    elif op_type == "CARD":
+        ctx["counterparty"] = op.merchant
+        ctx["direction"] = "OUT"
+    return render(request, "dashboard/transaction_detail.html", ctx)
+
+
+@login_required
+@customer_only
+def transaction_receipt_view(request, reference):
+    """Read-only receipt; never persists anything, never posts to the ledger.
+    Only effectively-completed operations carry a receipt."""
+    from django.http import Http404
+
+    journal = _owned_journal_or_404(request.user, reference)
+    op_type, op = _operation_for(journal)
+    reversible = {"COMPLETED", "REVERSED"}
+    ok = (op is not None
+          and getattr(op, "status", None) in reversible
+          and journal.status == "POSTED"
+          and not (op_type == "CARD" and op.declined))
+    if not ok:
+        raise Http404("Receipt not available")
+    entry = journal.entries.select_related("account__bank_account").filter(
+        account__is_customer_account=True).order_by("-amount").first()
+    amount = entry.amount if entry else None
+    direction = ("OUT" if entry and entry.side == "DEBIT" else "IN") if entry else ""
+    reversal = journal.reversed_by.first()
+    return render(request, "dashboard/receipt.html", {
+        "journal": journal, "op_type": op_type, "op": op,
+        "amount": amount, "direction": direction,
+        "status": getattr(op, "status", journal.status),
+        "reversed": reversal is not None,
+        "reversal_reference": reversal.reference if reversal else None,
+    })
