@@ -15,4 +15,6 @@ urlpatterns = [
     # FASE 4.4 — Security Operations console (staff only)
     path("secops/health/", security_ops.engine_health, name="secops_health"),
     path("secops/mode/", security_ops.mode_control, name="secops_mode"),
+    path("secops/evaluations/", security_ops.evaluation_browser, name="secops_evaluations"),
+    path("secops/evaluations/<int:evaluation_id>/", security_ops.evaluation_detail, name="secops_evaluation_detail"),
 ]

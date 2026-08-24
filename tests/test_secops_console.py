@@ -3,6 +3,7 @@ import pytest
 from django.urls import reverse
 
 from apps.audit.models import AuditLog
+from apps.fraud.models import RiskEvaluation
 
 PW = "Str0ng-pass!x"
 
@@ -131,3 +132,75 @@ def test_unknown_mode_rejected_with_message(fraud_manager):
                     follow=True)
     assert b"Unknown mode" in r.content
     assert get_mode() != "FULL_POWER"
+
+
+# ------------------------------------------------ S3: evaluation browser
+
+def _eval(operation="LOGIN", **kw):
+    defaults = dict(engine_mode="SHADOW", decision="ALLOW",
+                    status="COMPLETED")
+    defaults.update(kw)
+    return RiskEvaluation.objects.create(operation_type=operation, **defaults)
+
+
+@pytest.mark.django_db
+def test_browser_lists_and_filters(admin, django_user_model):
+    actor = _user(django_user_model, "ev-actor", "CUSTOMER")
+    login_ev = _eval(actor=actor)
+    _eval("TRANSFER", actor=actor, decision="BLOCK", risk_level="CRITICAL")
+    _, client = admin
+    url = reverse("fraud:secops_evaluations")
+
+    r = client.get(url, {"operation": "LOGIN"})
+    content = r.content.decode()
+    assert str(login_ev.pk) in content
+    assert "TRANSFER" not in content.split("<tbody>")[1].split("</tr>")[0]
+
+    r_block = client.get(url, {"decision": "BLOCK"})
+    block_body = r_block.content.decode().split("<tbody>")[1].split("</tr>")[0]
+    assert "TRANSFER" in block_body and "LOGIN" not in block_body
+
+    assert b"TRANSFER" in client.get(url).content      # no filter → all
+
+
+@pytest.mark.django_db
+def test_browser_pagination_server_side(admin):
+    _, client = admin
+    for i in range(30):
+        _eval()
+    r = client.get(reverse("fraud:secops_evaluations"))
+    content = r.content.decode()
+    assert "Page 1 of 2" in content
+    assert content.count("<tr class=\"border-t") == 25   # 25 per page
+
+
+@pytest.mark.django_db
+def test_customer_cannot_browse(customer):
+    _, client = customer
+    assert client.get(reverse("fraud:secops_evaluations")).status_code == 403
+
+
+@pytest.mark.django_db
+def test_detail_shows_signals_rules_and_blocks_customers(admin, django_user_model):
+    from django.test import Client as C
+
+    _, client = admin
+    ev = _eval(signal_values={"NEW_DEVICE": True},
+               triggered_rules=[{"rule_id": "R1", "version": 3, "score": 45}],
+               risk_score=45, policy_version="policy-v1")
+    r = client.get(reverse("fraud:secops_evaluation_detail", args=[ev.pk]))
+    assert r.status_code == 200
+    assert b"R1 v3" in r.content and b"NEW_DEVICE" in r.content
+
+    cust = _user(django_user_model, "ev-cust", "CUSTOMER")
+    cc = C()
+    cc.force_login(cust)
+    assert cc.get(
+        reverse("fraud:secops_evaluation_detail", args=[ev.pk])).status_code == 403
+
+
+@pytest.mark.django_db
+def test_health_links_to_browser(auditor):
+    _, client = auditor
+    r = client.get(reverse("fraud:secops_evaluations"))
+    assert b"Evaluation browser" in r.content or r.status_code == 200

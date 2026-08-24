@@ -21,7 +21,7 @@ AUDITOR (+superuser). CUSTOMER 403, anônimo redirect.
 |---|---|---|---|---|
 | feat/secops-engine-health | painel saúde read-only | concluído | 582 passed | PASS |
 | feat/secops-mode-control | modo atual + troca RBAC + histórico | concluído | 587 passed | PASS |
-| feat/secops-evaluation-browser | lista paginada + detail | pendente | — | — |
+| feat/secops-evaluation-browser | lista paginada + detail | concluído | 592 passed | PASS |
 
 ## Decisões
 - Console em apps/fraud/security_ops.py + rotas fraud:secops_* (mesmo app,

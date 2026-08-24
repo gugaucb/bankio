@@ -77,3 +77,48 @@ def mode_control(request):
         or has_permission(request.user, "change_fraud_mode"),
         "history": history,
     })
+
+
+@login_required
+def evaluation_browser(request):
+    """Paginated RiskEvaluation list with filters. Identifiers only — no
+    signal secrets are rendered beyond what the row already stores."""
+    _require_secops_user(request)
+    qs = RiskEvaluation.objects.select_related("actor").order_by("-created_at")
+    operation = request.GET.get("operation", "")
+    decision = request.GET.get("decision", "")
+    level = request.GET.get("level", "")
+    mode = request.GET.get("mode", "")
+    if operation:
+        qs = qs.filter(operation_type=operation)
+    if decision:
+        qs = qs.filter(decision=decision)
+    if level:
+        qs = qs.filter(risk_level=level)
+    if mode:
+        qs = qs.filter(engine_mode=mode)
+
+    page = Paginator(qs, 25).get_page(request.GET.get("page"))
+    distinct = RiskEvaluation.objects.values_list("operation_type", flat=True).distinct()
+    return render(request, "fraud/secops_evaluations.html", {
+        "nav": "secops",
+        "page": page,
+        "operations": sorted(set(distinct)),
+        "decisions": RiskEvaluation.Decision.choices,
+        "levels": RiskEvaluation.RiskLevel.choices,
+        "enginemodes": RiskEvaluation.EngineMode.choices,
+        "filters": {"operation": operation, "decision": decision,
+                    "level": level, "mode": mode},
+    })
+
+
+@login_required
+def evaluation_detail(request, evaluation_id):
+    _require_secops_user(request)
+    ev = RiskEvaluation.objects.select_related("actor").get(pk=evaluation_id)
+    return render(request, "fraud/secops_evaluation_detail.html", {
+        "nav": "secops",
+        "ev": ev,
+        "signals": ev.signal_values or {},
+        "rules": ev.triggered_rules or [],
+    })
