@@ -1,29 +1,74 @@
 {% extends "dashboard/shell.html" %}
 {% block title %}Security — Bankio{% endblock %}
 {% block page %}
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-4xl">
-  <form method="post" class="card p-6 space-y-4">
-    {% csrf_token %}
-    <input type="hidden" name="change_password" value="1">
-    <h3 class="font-semibold">Change Password</h3>
-    {% if pw_error %}<p class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2">{{ pw_error }}</p>{% endif %}
-    {{ form.as_p }}
-    <button class="btn-primary w-full">Update password</button>
-    <p class="text-xs text-gray-400">You will stay signed in after changing your password.</p>
-  </form>
+<div class="space-y-5 max-w-4xl">
 
-  <div class="card p-6">
-    <h3 class="font-semibold mb-4">Recent Sign-in Activity</h3>
+  <!-- Account security / password -->
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <form method="post" class="card p-6 space-y-4">
+      {% csrf_token %}
+      <input type="hidden" name="change_password" value="1">
+      <h3 class="font-semibold">Change Password</h3>
+      {% if pw_error %}<p class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2">{{ pw_error }}</p>{% endif %}
+      {{ form.as_p }}
+      <button class="btn-primary w-full">Update password</button>
+      <p class="text-xs text-gray-400">You will stay signed in after changing your password.</p>
+    </form>
+
+    <div class="card p-6">
+      <h3 class="font-semibold mb-4">Recent Sign-in Activity</h3>
+      <ul class="divide-y divide-gray-50 text-sm">
+        {% for action, ts, ip in recent_logins %}
+        <li class="py-2.5 flex justify-between">
+          <span class="{% if 'MFA' in action or action == 'LOGIN' %}text-emerald-700{% else %}text-gray-500{% endif %} font-medium">{{ action }}</span>
+          <span class="text-gray-400">{{ ts|date:"d M Y, H:i" }}{% if ip %} · {{ ip }}{% endif %}</span>
+        </li>
+        {% empty %}
+        <li class="py-6 text-center text-gray-400">No sign-in events recorded.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+
+  <!-- Devices -->
+  <section class="card p-6">
+    <h3 class="font-semibold mb-1">Devices</h3>
+    <p class="text-xs text-gray-400 mb-4">Browsers and apps you use to sign in. Trust only devices you control.</p>
     <ul class="divide-y divide-gray-50 text-sm">
-      {% for action, ts, ip in recent_logins %}
-      <li class="py-2.5 flex justify-between">
-        <span class="{% if 'MFA' in action or action == 'LOGIN' %}text-emerald-700{% else %}text-gray-500{% endif %} font-medium">{{ action }}</span>
-        <span class="text-gray-400">{{ ts|date:"d M Y, H:i" }}{% if ip %} · {{ ip }}{% endif %}</span>
+      {% for d in devices %}
+      <li class="py-3 flex flex-wrap items-center gap-2 justify-between">
+        <div class="min-w-0">
+          <p class="font-medium truncate{% if d.current %} text-emerald-700{% endif %}">
+            {{ d.obj.name|default:"Unknown device"|truncatechars:48 }}
+            {% if d.current %}<span class="ml-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold">This device</span>{% endif %}
+          </p>
+          <p class="text-xs text-gray-400">First used {{ d.obj.first_seen|date:"d M Y" }} · Last used {{ d.obj.last_seen|date:"d M Y, H:i" }}</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          {% if d.obj.trusted %}
+          <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Trusted</span>
+          <form method="post" class="inline">{% csrf_token %}
+            <input type="hidden" name="device" value="{{ d.obj.pk }}">
+            <button name="untrust_device" value="1" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50">Revoke trust</button>
+          </form>
+          {% else %}
+          <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">Not trusted</span>
+          <form method="post" class="inline">{% csrf_token %}
+            <input type="hidden" name="device" value="{{ d.obj.pk }}">
+            <button name="trust_device" value="1" class="text-xs px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50">Trust device</button>
+          </form>
+          {% endif %}
+          <form method="post" class="inline">{% csrf_token %}
+            <input type="hidden" name="device" value="{{ d.obj.pk }}">
+            <button name="revoke_device" value="1" class="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50">Remove</button>
+          </form>
+        </div>
       </li>
       {% empty %}
-      <li class="py-6 text-center text-gray-400">No sign-in events recorded.</li>
+      <li class="py-6 text-center text-gray-400">No devices registered yet.</li>
       {% endfor %}
     </ul>
-  </div>
+  </section>
+
 </div>
 {% endblock %}

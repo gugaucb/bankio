@@ -35,6 +35,65 @@ def is_new_device(user, request):
     return not Device.objects.filter(user=user, device_id=_device_hash(request), trusted=True).exists()
 
 
+def current_device_hash(request):
+    """Hash of the calling device, comparable with Device.device_id."""
+    return _device_hash(request)
+
+
+class DeviceError(Exception):
+    def __init__(self, code):
+        super().__init__(code)
+        self.code = code
+
+
+def _own_device(user, device_pk):
+    from .models import Device
+
+    device = Device.objects.filter(pk=device_pk, user=user).first()
+    if device is None:
+        raise DeviceError("DEVICE_NOT_FOUND")   # owner-or-not-found: no IDOR leak
+    return device
+
+
+def trust_device(user, device_pk, request=None):
+    """Owner marks a device as trusted. Explicit opt-in only — nothing else in
+    the system flips this flag (fraude signal semantics unchanged)."""
+    from apps.audit.services import record as audit
+
+    device = _own_device(user, device_pk)
+    if not device.trusted:
+        device.trusted = True
+        device.save(update_fields=["trusted"])
+        audit(actor=user, action="DEVICE_TRUSTED", request=request, resource=device,
+              metadata={"device_hash": device.device_id[:12]})
+    return device
+
+
+def untrust_device(user, device_pk, request=None):
+    """Revoke trust only; the device record stays (history preserved)."""
+    from apps.audit.services import record as audit
+
+    device = _own_device(user, device_pk)
+    if device.trusted:
+        device.trusted = False
+        device.save(update_fields=["trusted"])
+        audit(actor=user, action="DEVICE_UNTRUSTED", request=request, resource=device,
+              metadata={"device_hash": device.device_id[:12]})
+    return device
+
+
+def revoke_device(user, device_pk, request=None):
+    """Remove the device record entirely. A future login re-registers it as an
+    untrusted new device."""
+    from apps.audit.services import record as audit
+
+    device = _own_device(user, device_pk)
+    audit(actor=user, action="DEVICE_REVOKED", request=request, resource=None,
+          metadata={"device": device.name[:80], "device_hash": device.device_id[:12]})
+    device.delete()
+    return device
+
+
 def generate_otp(user):
     """Generate a 6-digit OTP valid for 5 minutes (demo: stored hashed on user)."""
     code = f"{secrets.randbelow(1000000):06d}"
