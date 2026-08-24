@@ -98,7 +98,9 @@ def _create(*, recipient, category, title, body, kind, metadata, dedup_key):
             )
     except IntegrityError:
         # concurrent insert of the same semantic event — idempotent replay
-        existing = Notification.objects.filter(dedup_key=dedup_key).first()
+        # (scoped to this recipient: keys are unique per user, not globally)
+        existing = Notification.objects.filter(
+            dedup_key=dedup_key, recipient=recipient).first()
         if existing is None:
             raise
         return existing
