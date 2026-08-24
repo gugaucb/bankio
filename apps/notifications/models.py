@@ -32,3 +32,23 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.category}/{self.kind or '-'} → {self.recipient_id} [{'read' if self.read else 'unread'}]"
+
+
+class NotificationPreference(models.Model):
+    """Per-category opt-out (FASE 6 B7). Missing row = enabled. Mandatory
+    kinds (services.MANDATORY_NOTIFICATION_KINDS) ignore this entirely."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name="notification_preferences")
+    category = models.CharField(max_length=32, choices=Category.choices)
+    enabled = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "category"],
+                                    name="uniq_notification_pref_user_category"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.category}={'on' if self.enabled else 'off'}"

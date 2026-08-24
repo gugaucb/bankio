@@ -667,8 +667,16 @@ def account_statement_print(request, account_id):
 def notifications_view(request):
     """Central de Notificações (FASE 6). Read-model customer-facing."""
     from django.core.paginator import Paginator
-    from apps.notifications.models import Notification
+    from apps.notifications.models import Notification, NotificationPreference
     from apps.notifications.models import Category
+
+    if request.method == "POST" and "pref_category" in request.POST:
+        from apps.notifications.services import set_category_preference
+        cat = request.POST.get("pref_category", "")
+        if cat in Category.values:
+            set_category_preference(actor=request.user, category=cat,
+                                    enabled=request.POST.get("pref_enabled") == "1")
+        return redirect("app_notifications")
 
     qs = Notification.objects.filter(recipient=request.user)
     state = request.GET.get("state", "")
@@ -680,12 +688,19 @@ def notifications_view(request):
     if category in Category.values:
         qs = qs.filter(category=category)
     page = Paginator(qs, 20).get_page(request.GET.get("page"))
+    pref_map = dict(NotificationPreference.objects.filter(
+        user=request.user).values_list("category", "enabled"))
+    pref_rows = [
+        {"value": value, "label": label, "enabled": pref_map.get(value, True)}
+        for value, label in Category.choices
+    ]
     return render(request, "dashboard/notifications.html", {
         "nav": "notifications", "page_heading": "Notifications",
         "page": page,
         "state": state if state in ("", "unread", "read") else "",
         "category": category,
         "categories": Category.choices,
+        "pref_rows": pref_rows,
     })
 
 
