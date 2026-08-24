@@ -432,3 +432,30 @@ def settings_view(request):
     return render(request, "dashboard/settings.html", {
         "nav": "settings", "page_heading": "Settings", "profile": u,
     })
+
+
+@login_required
+@customer_only
+def account_statement_view(request, account_id):
+    """Per-account statement (FASE 5). Read-only projection of the ledger;
+    ownership enforced server-side — foreign accounts are indistinguishable
+    from nonexistent ones."""
+    from django.core.paginator import Paginator
+    from django.http import Http404
+    from apps.accounts.statement import get_owned_account, statement_lines, statement_queryset
+
+    try:
+        account = get_owned_account(request.user, account_id)
+    except Account.DoesNotExist:
+        raise Http404("Account not found")
+
+    entries = Paginator(statement_queryset(account), 25).get_page(request.GET.get("page"))
+    lines = statement_lines(account, entries)
+    return render(request, "dashboard/statement.html", {
+        "nav": "accounts", "page_heading": "Statement",
+        "account": account,
+        "balance": account.current_balance,
+        "masked_number": f"•••• {account.account_number[-4:]}",
+        "page": entries,
+        "lines": lines,
+    })

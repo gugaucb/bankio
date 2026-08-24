@@ -15,6 +15,7 @@
     <div class="text-right">
       <p class="text-xl font-bold text-emerald-900">${{ a.current_balance|floatformat:2 }}</p>
       <p class="text-xs text-gray-400">Available ${{ a.available_balance|floatformat:2 }}</p>
+      <a class="text-xs text-emerald-700 underline" href="{% url 'app_account_statement' a.pk %}">View statement</a>
     </div>
   </div>
   {% empty %}
