@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Verification code — Bankio{% endblock %}
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4">
+  <div class="card w-full max-w-md p-8">
+    <div class="flex items-center gap-2 mb-8">
+      <div class="w-9 h-9 rounded-xl bg-emerald-800 flex items-center justify-center text-white font-bold">B</div>
+      <span class="text-xl font-bold text-emerald-900 tracking-tight">Bankio</span>
+    </div>
+    <h1 class="text-2xl font-bold mb-1">Two-factor verification</h1>
+    <p class="text-sm text-gray-500 mb-6">Enter the 6-digit code sent to you.</p>
+    {% if form.non_field_errors %}<div class="mb-4 text-sm text-red-600 bg-red-50 rounded-lg p-3">{{ form.non_field_errors.0 }}</div>{% endif %}
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      <input name="code" inputmode="numeric" maxlength="6" placeholder="000000" required autocomplete="one-time-code"
+             class="w-full rounded-xl border-gray-200 tracking-widest text-center text-lg focus:border-emerald-700 focus:ring-emerald-700">
+      <button type="submit" class="btn-primary w-full">Verify</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

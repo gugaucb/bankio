@@ -73,3 +73,22 @@ def correlate_account_takeover(user, window_hours=ATO_WINDOW_HOURS):
         "ato_points": min(points, 100),
         "explanation": explanation,
     }
+
+
+# --- engine signal bridge -----------------------------------------------------
+# The correlation becomes a SIGNAL so DB rules can consume it (score/decision
+# follow rules -> scoring -> policy). Nothing here hardcodes BLOCK.
+def _ato_correlation_points(ctx, user=None):
+    user = user or ctx.actor
+    if user is None:
+        return 0
+    return correlate_account_takeover(user)["ato_points"]
+
+
+def register_ato_signal():
+    from .signals import register
+
+    register("ATO_CORRELATION_POINTS")(_ato_correlation_points)
+
+
+register_ato_signal()

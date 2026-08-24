@@ -9,6 +9,7 @@ class FraudConfig(AppConfig):
     def ready(self):
         # ensure all signal modules are registered at startup
         from . import (  # noqa: F401
+            ato,   # registers the ATO_CORRELATION_POINTS signal bridge
             signals,
             signals_velocity,
             signals_beneficiary,
