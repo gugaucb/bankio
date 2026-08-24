@@ -3,6 +3,47 @@
 {% block page %}
 <div class="space-y-5 max-w-4xl">
 
+  <!-- MFA -->
+  <section class="card p-6">
+    <h3 class="font-semibold mb-1">Two-Factor Authentication (MFA)</h3>
+    <p class="text-xs text-gray-400 mb-4">A one-time code is required at sign-in when enabled.</p>
+    <p class="text-sm mb-4">Status:
+      {% if mfa_enabled %}
+      <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Enabled</span>
+      {% else %}
+      <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">Disabled</span>
+      {% endif %}
+    </p>
+
+    {% if not mfa_enabled %}
+    <form method="post" class="flex flex-wrap items-end gap-3">{% csrf_token %}
+      <button name="mfa_enable_start" value="1" class="btn-primary">Enable MFA</button>
+    </form>
+    <form method="post" class="mt-3 flex flex-wrap items-end gap-3">{% csrf_token %}
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Confirmation code</label>
+        <input name="mfa_code" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
+               class="border border-gray-200 rounded-lg px-3 py-2 tracking-widest w-32"
+               placeholder="000000">
+      </div>
+      <button name="mfa_enable_confirm" value="1" class="btn-primary">Confirm</button>
+    </form>
+    {% else %}
+    <form method="post" class="flex flex-wrap items-end gap-3">{% csrf_token %}
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Your password</label>
+        <input type="password" name="password" autocomplete="current-password"
+               class="border border-gray-200 rounded-lg px-3 py-2 w-56" placeholder="Password">
+      </div>
+      <button name="mfa_disable" value="1"
+              class="text-xs px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50">
+        Disable MFA
+      </button>
+    </form>
+    <p class="text-xs text-gray-400 mt-2">Disabling requires your password.</p>
+    {% endif %}
+  </section>
+
   <!-- Account security / password -->
   <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
     <form method="post" class="card p-6 space-y-4">
