@@ -11,6 +11,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.db import models
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
@@ -318,6 +319,24 @@ def security_view(request):
     events = AuditLog.objects.filter(actor=u, action__startswith="LOGIN").order_by("-timestamp")[:10]
     recent_logins = [(e.action, e.timestamp, e.ip_address) for e in events]
 
+    # ---- security activity history (server-side pagination, safe fields only)
+    from django.core.paginator import Paginator
+
+    _safe_actions = [
+        "LOGIN", "LOGIN_FAILED", "LOGIN_MFA", "LOGOUT", "PASSWORD_CHANGED",
+        "DEVICE_TRUSTED", "DEVICE_UNTRUSTED", "DEVICE_REVOKED",
+        "SESSION_REVOKED", "OTHER_SESSIONS_REVOKED",
+    ]
+    history_qs = AuditLog.objects.filter(actor=u).filter(
+        models.Q(action__in=_safe_actions) | models.Q(action__startswith="CHALLENGE")
+    ).order_by("-timestamp")
+    paginator = Paginator(history_qs, 10)
+    page = paginator.get_page(request.GET.get("page"))
+    history_entries = [{"action": e.action,
+                        "label": e.action.replace("_", " ").title(),
+                        "failed": "FAILED" in e.action,
+                        "timestamp": e.timestamp} for e in page]
+
     from django.contrib.sessions.models import Session
 
     from .services import current_device_hash
@@ -341,6 +360,8 @@ def security_view(request):
         "recent_logins": recent_logins, "pw_error": pw_error,
         "devices": devices,
         "sessions": sessions,
+        "history_page": page,
+        "history_entries": history_entries,
     })
 
 

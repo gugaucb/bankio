@@ -102,5 +102,34 @@
     {% endif %}
   </section>
 
+  <!-- Recent security activity -->
+  <section class="card p-6">
+    <h3 class="font-semibold mb-1">Recent Security Activity</h3>
+    <p class="text-xs text-gray-400 mb-4">Security events on your account, newest first.</p>
+    <ul class="divide-y divide-gray-50 text-sm">
+      {% for e in history_entries %}
+      <li class="py-2.5 flex justify-between gap-3">
+        <span class="font-medium {% if e.failed %}text-red-600{% else %}text-gray-600{% endif %}">
+          {{ e.label }}
+        </span>
+        <span class="text-gray-400 shrink-0">{{ e.timestamp|date:"d M Y, H:i" }}</span>
+      </li>
+      {% empty %}
+      <li class="py-6 text-center text-gray-400">No security activity yet.</li>
+      {% endfor %}
+    </ul>
+    {% if history_page.has_other_pages %}
+    <div class="mt-4 flex items-center justify-between text-sm">
+      {% if history_page.has_previous %}
+      <a class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50" href="?page={{ history_page.previous_page_number }}#activity">Previous</a>
+      {% else %}<span></span>{% endif %}
+      <span class="text-gray-400">Page {{ history_page.number }} of {{ history_page.paginator.num_pages }}</span>
+      {% if history_page.has_next %}
+      <a class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50" href="?page={{ history_page.next_page_number }}">Next</a>
+      {% else %}<span></span>{% endif %}
+    </div>
+    {% endif %}
+  </section>
+
 </div>
 {% endblock %}
