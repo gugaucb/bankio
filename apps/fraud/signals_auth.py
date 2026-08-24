@@ -41,8 +41,9 @@ def Q_login(user):
     return Q(actor=user) & (Q(action="LOGIN") | Q(action="LOGIN_FAILED"))
 
 
-# MFA failure count: identity records LOGIN_MFA on success and LOGIN_FAILED on
-# bad credentials; OTP failures are recorded as LOGIN_MFA with metadata flag.
+# MFA failure count: identity records LOGIN_MFA on success; OTP failures are
+# recorded as LOGIN_MFA with metadata otp_failure=true (real producer wired in
+# the login flow). Only failures feed this signal.
 @register("MFA_FAILURE_COUNT_24H")
 def mfa_failure_count_24h(ctx, user=None):
     user = user or ctx.actor
@@ -51,5 +52,6 @@ def mfa_failure_count_24h(ctx, user=None):
     return AuditLog.objects.filter(
         actor=user,
         action="LOGIN_MFA",
+        metadata__otp_failure=True,
         timestamp__gte=timezone.now() - timezone.timedelta(hours=24),
     ).count()
