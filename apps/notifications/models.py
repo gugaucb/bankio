@@ -17,9 +17,10 @@ class Notification(models.Model):
     title = models.CharField(max_length=140)
     body = models.TextField(blank=True)
     metadata = models.JSONField(default=dict, blank=True)
-    # Semantic idempotency: recipient+event+operation. Unique in the database;
-    # NULL for legacy/seed rows (Postgres allows multiple NULLs).
-    dedup_key = models.CharField(max_length=200, null=True, blank=True, unique=True)
+    # Semantic idempotency: recipient+event+operation. Unique PER RECIPIENT
+    # (a shared key between two users must never swallow either event);
+    # NULL for legacy/seed rows.
+    dedup_key = models.CharField(max_length=200, null=True, blank=True)
     read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -28,6 +29,10 @@ class Notification(models.Model):
         ordering = ["-created_at", "-id"]
         indexes = [
             models.Index(fields=["recipient", "read"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=["recipient", "dedup_key"],
+                                    name="uniq_notification_dedup_per_recipient"),
         ]
 
     def __str__(self):
