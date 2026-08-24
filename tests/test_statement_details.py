@@ -44,10 +44,6 @@ class TestTransactionDetails:
         s = _user("dt-a"); sa = _account(s)
         r = _user("dt-b"); ra = _account(r, "50.00")
         t = self._transfer(sa, ra)
-        from apps.identity.app_views import _operation_for
-        from apps.transfers.models import Transfer
-        print("OPLOOK:", _operation_for(t.journal))
-
         client.force_login(s)
         resp = client.get(reverse("app_transaction_detail", args=[t.journal.reference]))
         body = resp.content.decode()
