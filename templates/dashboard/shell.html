@@ -45,10 +45,10 @@
       </div>
       <div class="flex items-center gap-3">
         <input type="search" placeholder="Search..." class="hidden md:block rounded-xl border-gray-200 bg-white text-sm w-48 focus:border-emerald-700 focus:ring-emerald-700">
-        <button class="relative p-2 rounded-full hover:bg-gray-100" aria-label="Notifications">
+        <a href="{% url 'app_notifications' %}" class="relative p-2 rounded-full hover:bg-gray-100" aria-label="Notifications">
           🔔
           {% if unread_notifications %}<span class="absolute top-0 right-0 w-4 h-4 text-[10px] bg-red-500 text-white rounded-full grid place-items-center">{{ unread_notifications }}</span>{% endif %}
-        </button>
+        </a>
         <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-900 grid place-items-center font-semibold">{{ user.first_name.0|default:"B" }}</div>
       </div>
     </header>

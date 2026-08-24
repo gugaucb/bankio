@@ -652,3 +652,61 @@ def account_statement_print(request, account_id):
         "masked_number": f"•••• {account.account_number[-4:]}",
         "lines": lines, "truncated": filtered.count() > PRINT_MAX,
     })
+
+
+@login_required
+@customer_only
+def notifications_view(request):
+    """Central de Notificações (FASE 6). Read-model customer-facing."""
+    from django.core.paginator import Paginator
+    from apps.notifications.models import Notification
+    from apps.notifications.models import Category
+
+    qs = Notification.objects.filter(recipient=request.user)
+    state = request.GET.get("state", "")
+    if state == "unread":
+        qs = qs.filter(read=False)
+    elif state == "read":
+        qs = qs.filter(read=True)
+    category = request.GET.get("category", "")
+    if category in Category.values:
+        qs = qs.filter(category=category)
+    page = Paginator(qs, 20).get_page(request.GET.get("page"))
+    return render(request, "dashboard/notifications.html", {
+        "nav": "notifications", "page_heading": "Notifications",
+        "page": page,
+        "state": state if state in ("", "unread", "read") else "",
+        "category": category,
+        "categories": Category.choices,
+    })
+
+
+@login_required
+@customer_only
+def notification_read_view(request, notification_id):
+    """POST-only mark-read; ownership enforced; idempotent."""
+    from django.http import Http404
+    from django.shortcuts import redirect
+    from apps.notifications.services import mark_read
+
+    from apps.notifications.models import Notification as _Notification
+
+    if request.method != "POST":
+        return redirect("app_notifications")
+    note = _Notification.objects.filter(
+        recipient=request.user, pk=notification_id).first()
+    if note is None:
+        raise Http404("Notification not found")
+    mark_read(note)
+    return redirect("app_notifications")
+
+
+@login_required
+@customer_only
+def notifications_mark_all_read_view(request):
+    from django.shortcuts import redirect
+    from apps.notifications.services import mark_all_read
+
+    if request.method == "POST":
+        mark_all_read(request.user)
+    return redirect("app_notifications")
