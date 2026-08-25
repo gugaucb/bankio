@@ -27,15 +27,18 @@ Baseline: **714 passed** (main @ ed0e822), check/migrations limpos.
 ## Branches (ordem obrigatória)
 | # | Branch | Estado | Testes | Veredito |
 |---|---|---|---|---|
-| 1 | feat/cards-advanced-dashboard | pendente | — | — |
-| 2 | feat/cards-controls-lifecycle | pendente | — | — |
-| 3 | feat/cards-limits-availability | pendente | — | — |
-| 4 | feat/cards-transactions-history | pendente | — | — |
-| 5 | feat/cards-billing-cycle | pendente | — | — |
-| 6 | feat/cards-invoice-ui | pendente | — | — |
-| 7 | feat/cards-invoice-payment-advanced | pendente | — | — |
-| 8 | feat/cards-advanced-notifications | pendente | — | — |
-| 9 | test/cards-advanced-regression | pendente | — | — |
+| 1 | feat/cards-advanced-dashboard | concluído (merged) | 719 | PASS |
+| 2 | feat/cards-controls-lifecycle | concluído (merged) | 729 | PASS |
+| 3 | feat/cards-limits-availability | concluído (merged) | 737 | PASS |
+| 4 | feat/cards-transactions-history | concluído (merged) | 742 | PASS |
+| 5 | feat/cards-billing-cycle | concluído (merged) | 750 | PASS |
+| 6 | feat/cards-invoice-ui | concluído (merged) | 755 | PASS |
+| 7 | feat/cards-invoice-payment-advanced | concluído (merged) | 761 | PASS |
+| 8 | feat/cards-advanced-notifications | concluído (merged) | 766 | PASS |
+| 9 | test/cards-advanced-regression | concluído (merged) | 774 | PASS |
+
+FASE 8 ENCERRADA: 714 → **774 passed**; relatório final em
+docs/cards/final-acceptance-report.md
 
 Discovery completo: docs/cards/fase8-discovery.md
 Bug pré-existente conhecido: decline rows de controle sofrem rollback
