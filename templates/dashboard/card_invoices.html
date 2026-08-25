@@ -1,0 +1,53 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Invoices — Bankio{% endblock %}
+{% block page %}
+<div class="space-y-5">
+  <a href="{% url 'app_card_detail' card.pk %}" class="text-sm text-emerald-700 underline">← Card •••• {{ card.last4 }}</a>
+
+  <div class="card p-6">
+    <div class="flex justify-between items-start">
+      <h3 class="font-semibold text-sm">Current invoice (open cycle)</h3>
+      <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs">OPEN</span>
+    </div>
+    <p class="text-3xl font-bold mt-2">${{ open_total|floatformat:2 }}</p>
+    <p class="text-xs text-gray-400 mt-1">Closes {{ next_close|date:"d M Y" }}</p>
+    <div class="divide-y divide-gray-50 mt-4 text-sm">
+      {% for t in open_lines %}
+      <div class="py-2 flex items-center justify-between">
+        <span>{{ t.merchant }} · {{ t.created_at|date:"d M" }}</span>
+        <span class="font-medium">${{ t.amount|floatformat:2 }}</span>
+      </div>
+      {% empty %}
+      <p class="py-3 text-gray-400 text-center text-xs">No purchases in this cycle yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <h3 class="font-semibold text-sm pt-2">Previous invoices</h3>
+  {% if stmts_page.object_list %}
+  <div class="card divide-y divide-gray-50 text-sm">
+    {% for s in stmts_page %}
+    <a href="{% url 'app_card_invoice_detail' card.pk s.pk %}" class="px-5 py-3 flex items-center justify-between hover:bg-gray-50">
+      <div>
+        <p class="font-medium">{{ s.period_start|date:"F Y" }}</p>
+        <p class="text-xs text-gray-400">closed {{ s.period_end|date:"d M Y" }} · due {{ s.due_date|date:"d M Y" }}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="px-2 py-0.5 rounded-full text-xs font-semibold {% if s.paid %}bg-emerald-100 text-emerald-800{% else %}bg-red-100 text-red-700{% endif %}">
+          {% if s.paid %}PAID{% else %}UNPAID{% endif %}
+        </span>
+        <span class="font-semibold">${{ s.amount_due|floatformat:2 }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  <div class="flex items-center gap-3 text-sm">
+    {% if stmts_page.has_previous %}<a class="underline" href="?page={{ stmts_page.previous_page_number }}">Previous</a>{% endif %}
+    <span>Page {{ stmts_page.number }} of {{ stmts_page.paginator.num_pages }}</span>
+    {% if stmts_page.has_next %}<a class="underline" href="?page={{ stmts_page.next_page_number }}">Next</a>{% endif %}
+  </div>
+  {% else %}
+  <div class="card p-8 text-center text-sm text-gray-400">No closed invoices yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

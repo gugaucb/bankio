@@ -370,6 +370,59 @@ def card_transaction_detail_view(request, card_id, tx_id):
 
 @login_required
 @customer_only
+def card_invoices_view(request, card_id):
+    """FASE 8 B6: current open invoice + paginated previous statements."""
+    from django.core.paginator import Paginator
+    from django.http import Http404
+    from django.utils import timezone
+    from apps.cards.billing import open_cycle_composition
+    from apps.cards.models import Card, CreditStatement
+
+    card = Card.objects.filter(pk=card_id, account__customer=request.user).first()
+    if card is None:
+        raise Http404("Card not found")
+    today = timezone.now().date()
+    open_lines = open_cycle_composition(card)[:25]
+    open_total = sum(t.amount for t in open_cycle_composition(card))
+    stmts = Paginator(card.statements.order_by("-period_end"), 12).get_page(
+        request.GET.get("page"))
+    return render(request, "dashboard/card_invoices.html", {
+        "nav": "cards", "page_heading": f"Invoices •••• {card.last4}",
+        "card": card,
+        "open_lines": open_lines,
+        "open_total": open_total,
+        "next_close": today.replace(day=1),
+        "stmts_page": stmts,
+    })
+
+
+@login_required
+@customer_only
+def card_invoice_detail_view(request, card_id, statement_id):
+    """FASE 8 B6: closed invoice detail. Ownership user+card+statement."""
+    from django.http import Http404
+    from apps.cards.billing import statement_composition
+    from apps.cards.models import Card, CreditStatement
+
+    stmt = CreditStatement.objects.select_related(
+        "card__account__customer").filter(
+        pk=statement_id, card_id=card_id,
+        card__account__customer=request.user).first()
+    if stmt is None:
+        raise Http404("Invoice not found")
+    lines = list(statement_composition(stmt))
+    derived = sum(t.amount for t in lines)
+    return render(request, "dashboard/card_invoice_detail.html", {
+        "nav": "cards",
+        "page_heading": f"Invoice •••• {stmt.card.last4}",
+        "card": stmt.card, "stmt": stmt, "lines": lines,
+        "derived_total": derived,
+        "consistent": derived == stmt.amount_due,
+    })
+
+
+@login_required
+@customer_only
 def cards_view(request):
     u = request.user
     cards = Card.objects.filter(account__customer=u).select_related("account")
