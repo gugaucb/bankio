@@ -21,6 +21,7 @@ urlpatterns = [
     path("app/cards/<int:card_id>/transactions/<int:tx_id>/", app_views.card_transaction_detail_view, name="app_card_transaction_detail"),
     path("app/cards/<int:card_id>/invoices/", app_views.card_invoices_view, name="app_card_invoices"),
     path("app/cards/<int:card_id>/invoices/<int:statement_id>/", app_views.card_invoice_detail_view, name="app_card_invoice_detail"),
+    path("app/cards/<int:card_id>/invoices/pay/", app_views.card_pay_invoice_view, name="app_card_pay_invoice"),
     path("app/security/", app_views.security_view, name="app_security"),
     path("app/settings/", app_views.settings_view, name="app_settings"),
     path("app/notifications/", app_views.notifications_view, name="app_notifications"),

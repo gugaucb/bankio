@@ -11,6 +11,12 @@
     </div>
     <p class="text-3xl font-bold mt-2">${{ open_total|floatformat:2 }}</p>
     <p class="text-xs text-gray-400 mt-1">Closes {{ next_close|date:"d M Y" }}</p>
+    {% if stmts_page.object_list %}
+    <form method="post" action="{% url 'app_card_pay_invoice' card.pk %}" class="mt-4">
+      {% csrf_token %}
+      <button class="btn-primary text-sm">Pay open invoices</button>
+    </form>
+    {% endif %}
     <div class="divide-y divide-gray-50 mt-4 text-sm">
       {% for t in open_lines %}
       <div class="py-2 flex items-center justify-between">
