@@ -112,6 +112,7 @@ class CreditStatement(models.Model):
     period_start = models.DateField()
     period_end = models.DateField()
     amount_due = models.DecimalField(max_digits=19, decimal_places=2)
+    due_date = models.DateField(null=True, blank=True)  # FASE 8 B5
     paid = models.BooleanField(default=False)
     paid_at = models.DateTimeField(null=True, blank=True)
 
