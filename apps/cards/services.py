@@ -67,7 +67,31 @@ def set_card_control(actor, card_id, **controls):
     card.clean_limits()
     card.save()
     audit(actor=actor, action="CARD_UPDATED", resource=card, metadata={"changes": changed})
+    # FASE 8 B8: lifecycle notifications AFTER the control commit only.
+    recipient = getattr(card.account, "customer", None)
+    status_change = next((c for c in changed if c.startswith("status=")), None)
+    if status_change in ("status=FROZEN", "status=ACTIVE", "status=BLOCKED"):
+        kind = {"status=FROZEN": "CARD_FROZEN",
+                "status=ACTIVE": "CARD_UNFROZEN",
+                "status=BLOCKED": "CARD_MARKED_LOST"}[status_change]
+        transaction.on_commit(
+            lambda: _card_lifecycle_notification(recipient, kind, card.pk))
     return card
+
+
+def _card_lifecycle_notification(recipient, kind, card_id):
+    from apps.notifications.services import notify
+
+    texts = {
+        "CARD_FROZEN": ("Card frozen", "Your card was frozen."),
+        "CARD_UNFROZEN": ("Card unfrozen", "Your card is active again."),
+        "CARD_MARKED_LOST": ("Card blocked",
+                             "Your card was reported lost and permanently "
+                             "blocked. Request a replacement if needed."),
+    }
+    title, body = texts.get(kind, (kind.replace("_", " ").title(), ""))
+    notify(recipient=recipient, category="CARD", kind=kind, title=title,
+           body=body, dedup_key=f"{kind}:{card_id}:{recipient.pk}")
 
 
 def freeze_card(actor, card_id):
