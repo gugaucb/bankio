@@ -21,6 +21,7 @@
         <dt class="text-gray-400">Daily limit</dt><dd>${{ c.daily_limit|floatformat:2 }}</dd>
         <dt class="text-gray-400">Linked account</dt><dd class="font-mono">{{ c.account.account_number }}</dd>
       </dl>
+      <a href="{% url 'app_card_detail' c.pk %}" class="inline-block mt-3 text-sm text-emerald-700 underline">View details →</a>
     </div>
     {% empty %}
     <div class="card p-8 text-center text-gray-400 text-sm">You have no cards yet. Request one on the right.</div>

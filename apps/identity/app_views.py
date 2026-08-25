@@ -237,6 +237,30 @@ def investments_view(request):
 
 @login_required
 @customer_only
+def card_detail_view(request, card_id):
+    """FASE 8 B1: per-card detail. Server-side ownership; IDOR -> 404."""
+    from django.http import Http404
+    from apps.cards.models import Card
+    from apps.cards.services import credit_availability, outstanding_statement_total
+
+    card = Card.objects.select_related("account", "account__customer").filter(
+        pk=card_id, account__customer=request.user).first()
+    if card is None:
+        raise Http404("Card not found")
+    used, available = credit_availability(card)
+    txs = card.transactions.all()[:10]
+    return render(request, "dashboard/card_detail.html", {
+        "nav": "cards", "page_heading": f"Card •••• {card.last4}",
+        "card": card,
+        "credit_used": used,
+        "credit_available": available,
+        "outstanding_total": outstanding_statement_total(card),
+        "recent_transactions": txs,
+    })
+
+
+@login_required
+@customer_only
 def cards_view(request):
     u = request.user
     cards = Card.objects.filter(account__customer=u).select_related("account")
