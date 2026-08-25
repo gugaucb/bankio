@@ -423,6 +423,32 @@ def card_invoice_detail_view(request, card_id, statement_id):
 
 @login_required
 @customer_only
+def card_pay_invoice_view(request, card_id):
+    """FASE 8 B7: POST-only invoice payment from the linked account."""
+    from django.core.exceptions import PermissionDenied
+    from django.http import Http404
+    from django.shortcuts import redirect
+    from apps.cards.models import Card
+    from apps.cards.services import CardDeclined, pay_statement
+
+    if request.method != "POST":
+        return redirect("app_card_invoices", card_id)
+    card = Card.objects.filter(pk=card_id, account__customer=request.user).first()
+    if card is None:
+        raise Http404("Card not found")
+    statement_id = request.POST.get("statement") or None
+    try:
+        total = pay_statement(actor=request.user, card_id=card.pk,
+                              statement_id=statement_id,
+                              idempotency_key=f"ui:{card.pk}:{request.user.pk}:{statement_id or 'all'}")
+        messages.success(request, f"Invoice payment of ${total} completed.")
+    except (CardDeclined, PermissionDenied) as e:
+        messages.error(request, getattr(e, "reason", None) or str(e))
+    return redirect("app_card_invoices", card_id)
+
+
+@login_required
+@customer_only
 def cards_view(request):
     u = request.user
     cards = Card.objects.filter(account__customer=u).select_related("account")

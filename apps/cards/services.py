@@ -325,10 +325,27 @@ def pay_statement(actor, card_id, statement_id=None, idempotency_key=None):
         ],
     )
     now = timezone.now()
+    recipient = account.customer
     stmts.update(paid=True, paid_at=now)
     ledger.record_idempotent(key, "CARD_STATEMENT_PAYMENT", journal, {"total": str(total)})
     audit(actor=actor, action="CARD_STATEMENT_PAID", resource=card, metadata={"amount": str(total), "journal": journal.reference})
+    # FASE 8 B7: customer notification AFTER the settlement commit only.
+    amount_str = str(total)
+    reference = journal.reference
+    transaction.on_commit(lambda: _statement_paid_notification(
+        recipient, amount_str, reference))
     return total
+
+
+def _statement_paid_notification(recipient, amount, reference):
+    from apps.notifications.services import notify
+
+    notify(recipient=recipient, category="CARD", kind="CARD_INVOICE_PAID",
+           title="Invoice paid",
+           body=f"Your credit card invoice payment of ${amount} was completed "
+                f"(ref {reference}).",
+           metadata={"reference": reference},
+           dedup_key=f"CARD_INVOICE_PAID:{reference}:{recipient.pk}")
 
 
 # ---------------------------------------------------------------- card requests
