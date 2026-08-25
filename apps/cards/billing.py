@@ -56,7 +56,45 @@ def close_card_statements(reference=None):
         )
         if was_created:
             created.append(stmt)
+    _notify_closed(created)
     return created
+
+
+def _notify_closed(statements):
+    """FASE 8 B8: customer notifications for freshly closed invoices."""
+    from django.db import transaction
+
+    from apps.notifications.services import notify
+
+    def _send(stmt):
+        recipient = getattr(stmt.card.account, "customer", None)
+        notify(recipient=recipient, category="CARD",
+               kind="CARD_INVOICE_CLOSED",
+               title=f"Invoice closed — ${stmt.amount_due}",
+               body=(f"Your invoice for {stmt.period_start:%B %Y} was closed "
+                     f"at ${stmt.amount_due}. Due {stmt.due_date:%d %b %Y}."),
+               metadata={"statement": str(stmt.pk)},
+               dedup_key=f"CARD_INVOICE_CLOSED:{stmt.pk}:{recipient.pk}")
+
+    for stmt in statements:
+        transaction.on_commit(lambda s=stmt: _send(s))
+
+
+def notify_overdue_statements():
+    """One-time CARD_INVOICE_DUE per overdue statement (dedup by statement)."""
+    from django.db import transaction
+
+    from apps.notifications.services import notify
+
+    for stmt in overdue_statements():
+        recipient = getattr(stmt.card.account, "customer", None)
+        transaction.on_commit(lambda s=stmt, r=recipient: notify(
+            recipient=r, category="CARD", kind="CARD_INVOICE_DUE",
+            title="Invoice overdue",
+            body=(f"Your invoice of ${s.amount_due} was due on "
+                  f"{s.due_date:%d %b %Y} and is still unpaid."),
+            metadata={"statement": str(s.pk)},
+            dedup_key=f"CARD_INVOICE_DUE:{s.pk}:{r.pk}"))
 
 
 def statement_composition(statement):

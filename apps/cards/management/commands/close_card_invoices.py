@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from apps.audit.services import record as audit
-from apps.cards.billing import close_card_statements
+from apps.cards.billing import close_card_statements, notify_overdue_statements
 
 
 class Command(BaseCommand):
@@ -26,3 +26,4 @@ class Command(BaseCommand):
                             "due_date": str(stmt.due_date)})
         self.stdout.write(self.style.SUCCESS(
             f"Closed {len(created)} statement(s)."))
+        notify_overdue_statements()
