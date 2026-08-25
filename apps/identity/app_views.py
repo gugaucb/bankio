@@ -305,6 +305,71 @@ def card_control_view(request, card_id):
 
 @login_required
 @customer_only
+def card_transactions_view(request, card_id):
+    """FASE 8 B4: card transaction history. Server-side filters + pagination."""
+    from datetime import datetime
+
+    from django.core.paginator import Paginator
+    from django.http import Http404
+    from django.utils import timezone
+    from apps.cards.models import Card, CardTransaction
+
+    card = Card.objects.filter(pk=card_id, account__customer=request.user).first()
+    if card is None:
+        raise Http404("Card not found")
+    qs = card.transactions.all()
+    status = request.GET.get("status", "")
+    if status == "approved":
+        qs = qs.filter(declined=False)
+    elif status == "declined":
+        qs = qs.filter(declined=True)
+    period_from = period_to = ""
+    try:
+        raw = request.GET.get("from", "")
+        period_from = raw
+        if raw:
+            qs = qs.filter(created_at__date__gte=datetime.strptime(raw, "%Y-%m-%d").date())
+        raw = request.GET.get("to", "")
+        period_to = raw
+        if raw:
+            qs = qs.filter(created_at__date__lte=datetime.strptime(raw, "%Y-%m-%d").date())
+    except ValueError:
+        pass
+    merchant = request.GET.get("merchant", "")[:80]
+    if merchant:
+        qs = qs.filter(merchant__icontains=merchant)
+    page = Paginator(qs, 25).get_page(request.GET.get("page"))
+    return render(request, "dashboard/card_transactions.html", {
+        "nav": "cards", "page_heading": f"Transactions •••• {card.last4}",
+        "card": card, "page": page,
+        "status": status if status in ("", "approved", "declined") else "",
+        "period_from": period_from, "period_to": period_to,
+        "merchant": merchant,
+    })
+
+
+@login_required
+@customer_only
+def card_transaction_detail_view(request, card_id, tx_id):
+    """FASE 8 B4: ownership validated across user + card + transaction."""
+    from django.http import Http404
+    from apps.cards.models import Card, CardTransaction
+
+    tx = CardTransaction.objects.select_related(
+        "card__account__customer", "journal").filter(
+        pk=tx_id, card_id=card_id,
+        card__account__customer=request.user).first()
+    if tx is None:
+        raise Http404("Transaction not found")
+    return render(request, "dashboard/card_transaction_detail.html", {
+        "nav": "cards",
+        "page_heading": f"Transaction •••• {tx.card.last4}",
+        "card": tx.card, "tx": tx,
+    })
+
+
+@login_required
+@customer_only
 def cards_view(request):
     u = request.user
     cards = Card.objects.filter(account__customer=u).select_related("account")
