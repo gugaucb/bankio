@@ -16,6 +16,7 @@ urlpatterns = [
     path("app/investments/", app_views.investments_view, name="app_investments"),
     path("app/cards/", app_views.cards_view, name="app_cards"),
     path("app/cards/<int:card_id>/", app_views.card_detail_view, name="app_card_detail"),
+    path("app/cards/<int:card_id>/controls/", app_views.card_control_view, name="app_card_control"),
     path("app/security/", app_views.security_view, name="app_security"),
     path("app/settings/", app_views.settings_view, name="app_settings"),
     path("app/notifications/", app_views.notifications_view, name="app_notifications"),

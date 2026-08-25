@@ -261,6 +261,50 @@ def card_detail_view(request, card_id):
 
 @login_required
 @customer_only
+def card_control_view(request, card_id):
+    """FASE 8 B2: POST-only customer controls (freeze/unfreeze/online/
+    international/lost). Ownership server-side; audited by domain services."""
+    from django.core.exceptions import PermissionDenied
+    from django.http import Http404
+    from django.shortcuts import redirect
+    from apps.cards.models import Card, CardStatus
+    from apps.cards.services import (CardDeclined, freeze_card,
+                                     report_lost_or_stolen, set_card_control,
+                                     unfreeze_card)
+
+    if request.method != "POST":
+        return redirect("app_card_detail", card_id)
+    card = Card.objects.filter(pk=card_id, account__customer=request.user).first()
+    if card is None:
+        raise Http404("Card not found")
+    action = request.POST.get("action", "")
+    try:
+        if action == "freeze":
+            freeze_card(request.user, card_id)
+            messages.success(request, "Card frozen.")
+        elif action == "unfreeze":
+            unfreeze_card(request.user, card_id)
+            messages.success(request, "Card unfrozen.")
+        elif action == "toggle_online":
+            set_card_control(request.user, card_id,
+                             online_enabled=not card.online_enabled)
+            messages.success(request, "Online purchases updated.")
+        elif action == "toggle_international":
+            set_card_control(request.user, card_id,
+                             international_enabled=not card.international_enabled)
+            messages.success(request, "International purchases updated.")
+        elif action == "report_lost":
+            report_lost_or_stolen(request.user, card_id)
+            messages.success(request, "Card blocked and reported lost.")
+        else:
+            messages.error(request, "Unknown control action.")
+    except (CardDeclined, PermissionDenied) as e:
+        messages.error(request, getattr(e, "reason", None) or str(e))
+    return redirect("app_card_detail", card_id)
+
+
+@login_required
+@customer_only
 def cards_view(request):
     u = request.user
     cards = Card.objects.filter(account__customer=u).select_related("account")

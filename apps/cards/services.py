@@ -54,7 +54,9 @@ def set_card_control(actor, card_id, **controls):
     changed = []
     if "status" in controls:
         new_status = controls.pop("status")
-        if new_status in (CardStatus.FROZEN, CardStatus.ACTIVE):
+        # FASE 8 fix: BLOCKED was previously accepted by report_lost_or_stolen
+        # but silently ignored here — a "lost" card stayed ACTIVE.
+        if new_status in (CardStatus.FROZEN, CardStatus.ACTIVE, CardStatus.BLOCKED):
             card.status = new_status
             changed.append(f"status={new_status}")
     for key, value in controls.items():
@@ -357,8 +359,12 @@ def request_card(customer, account_id, card_type="CREDIT_CARD", requested_limit=
         customer=customer, account=account, type=card_type,
         requested_limit=min(limit, MAX_REQUESTED_LIMIT),
     )
-    audit(actor=customer, action="CARD_REQUESTED", resource=req,
-          metadata={"type": card_type, "limit": str(limit)})
+    # FASE 8 B2: a request on an account with a blocked (lost) card is a
+    # replacement request — same flow, distinct audit trail.
+    has_blocked = Card.objects.filter(account=account, status=CardStatus.BLOCKED).exists()
+    audit(actor=customer,
+          action="CARD_REPLACEMENT_REQUESTED" if has_blocked else "CARD_REQUESTED",
+          resource=req, metadata={"type": card_type, "limit": str(limit)})
     return req
 
 
