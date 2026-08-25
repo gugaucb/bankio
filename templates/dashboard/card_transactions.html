@@ -1,0 +1,43 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Card transactions — Bankio{% endblock %}
+{% block page %}
+<div class="space-y-5">
+  <a href="{% url 'app_card_detail' card.pk %}" class="text-sm text-emerald-700 underline">← Card •••• {{ card.last4 }}</a>
+
+  <form method="get" class="card p-4 flex gap-3 flex-wrap items-end text-sm">
+    <label>From <input type="date" name="from" value="{{ period_from }}" class="ml-1 rounded-lg border-gray-200"></label>
+    <label>To <input type="date" name="to" value="{{ period_to }}" class="ml-1 rounded-lg border-gray-200"></label>
+    <select name="status" class="rounded-lg border-gray-200">
+      <option value="">All</option>
+      <option value="approved" {% if status == 'approved' %}selected{% endif %}>Approved</option>
+      <option value="declined" {% if status == 'declined' %}selected{% endif %}>Declined</option>
+    </select>
+    <label>Merchant <input type="text" name="merchant" value="{{ merchant }}" maxlength="80" class="ml-1 w-40 rounded-lg border-gray-200"></label>
+    <button class="btn-primary">Filter</button>
+  </form>
+
+  {% if page.object_list %}
+  <div class="card divide-y divide-gray-50">
+    {% for t in page %}
+    <a href="{% url 'app_card_transaction_detail' card.pk t.pk %}" class="px-5 py-3 flex items-center justify-between text-sm hover:bg-gray-50">
+      <div>
+        <p class="font-medium">{{ t.merchant }}</p>
+        <p class="text-xs text-gray-400">{{ t.created_at|date:"d M Y, H:i" }}
+          {% if t.declined %}<span class="ml-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px]">DECLINED</span>
+          {% else %}<span class="ml-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px]">APPROVED</span>{% endif %}
+        </p>
+      </div>
+      <span class="{% if t.declined %}text-gray-400{% else %}font-semibold{% endif %}">{{ t.currency }} ${{ t.amount|floatformat:2 }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  <div class="flex items-center gap-3 text-sm">
+    {% if page.has_previous %}<a class="underline" href="?page={{ page.previous_page_number }}&status={{ status }}&from={{ period_from }}&to={{ period_to }}&merchant={{ merchant }}">Previous</a>{% endif %}
+    <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="underline" href="?page={{ page.next_page_number }}&status={{ status }}&from={{ period_from }}&to={{ period_to }}&merchant={{ merchant }}">Next</a>{% endif %}
+  </div>
+  {% else %}
+  <div class="card p-10 text-center text-sm text-gray-400">No transactions match.</div>
+  {% endif %}
+</div>
+{% endblock %}

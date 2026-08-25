@@ -64,7 +64,10 @@
   </div>
 
   <div class="card divide-y divide-gray-50">
-    <h3 class="px-5 pt-4 font-semibold text-sm">Recent transactions</h3>
+    <div class="px-5 pt-4 flex items-center justify-between">
+      <h3 class="font-semibold text-sm">Recent transactions</h3>
+      <a href="{% url 'app_card_transactions' card.pk %}" class="text-xs text-emerald-700 underline">View all →</a>
+    </div>
     {% for t in recent_transactions %}
     <div class="px-5 py-3 flex items-center justify-between text-sm">
       <div>

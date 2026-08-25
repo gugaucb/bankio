@@ -1,0 +1,22 @@
+{% extends "dashboard/shell.html" %}
+{% block title %}Transaction detail — Bankio{% endblock %}
+{% block page %}
+<div class="space-y-5 max-w-xl">
+  <a href="{% url 'app_card_transactions' card.pk %}" class="text-sm text-emerald-700 underline">← Transactions</a>
+  <div class="card p-6 space-y-2 text-sm">
+    <p><span class="text-gray-400">Merchant:</span> <span class="font-medium">{{ tx.merchant }}</span></p>
+    <p><span class="text-gray-400">Amount:</span> <span class="font-semibold">{{ tx.currency }} ${{ tx.amount|floatformat:2 }}</span></p>
+    <p><span class="text-gray-400">Date:</span> {{ tx.created_at|date:"d M Y, H:i" }}</p>
+    <p><span class="text-gray-400">Status:</span>
+      {% if tx.declined %}<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs">DECLINED</span>
+      {% else %}<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs">APPROVED</span>{% endif %}
+    </p>
+    {% if tx.decline_reason %}<p><span class="text-gray-400">Reason:</span> {{ tx.decline_reason }}</p>{% endif %}
+    <p><span class="text-gray-400">Type:</span> {% if tx.online %}online{% else %}in-person{% endif %}{% if tx.international %} · international{% endif %}</p>
+    {% if tx.journal %}
+    <p><span class="text-gray-400">Reference:</span> <span class="font-mono">{{ tx.journal.reference }}</span></p>
+    <a href="{% url 'app_transaction_receipt' tx.journal.reference %}" class="inline-block text-emerald-700 underline">View receipt →</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
