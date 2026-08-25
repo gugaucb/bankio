@@ -27,6 +27,7 @@
       <dt class="text-gray-400">International</dt><dd>{% if card.international_enabled %}ON{% else %}OFF{% endif %}</dd>
       <dt class="text-gray-400">Linked account</dt><dd class="font-mono">{{ card.account.account_number }}</dd>
     </dl>
+    <a href="{% url 'app_card_invoices' card.pk %}" class="inline-block mt-3 text-sm text-emerald-700 underline">Invoices →</a>
   </div>
 
   <div class="card p-5">
