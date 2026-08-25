@@ -161,6 +161,29 @@ def _decline_row(card, merchant, amount, online, international, reason):
     )
 
 
+# --- FASE 8: derived limit availability (single source of truth: ledger+tx) ---
+
+def credit_used(card):
+    """Credit currently drawn: approved purchases minus settled statements."""
+    approved = card.transactions.filter(declined=False).aggregate(
+        s=Sum("amount"))["s"] or Decimal("0")
+    settled = card.statements.filter(paid=True).aggregate(
+        s=Sum("amount_due"))["s"] or Decimal("0")
+    return max(approved - settled, Decimal("0"))
+
+
+def credit_availability(card):
+    """(used, available) for credit-type cards. Derived — never stored."""
+    used = credit_used(card)
+    return used, max(card.credit_limit - used, Decimal("0"))
+
+
+def outstanding_statement_total(card):
+    """Open (unpaid) statement total = 'current invoice' shown to customers."""
+    return card.statements.filter(paid=False).aggregate(
+        s=Sum("amount_due"))["s"] or Decimal("0")
+
+
 @transaction.atomic
 def _purchase_atomic(*, card_id, merchant, amount, online, international, atm, key):
     """Hard controls + settlement under the card lock."""
