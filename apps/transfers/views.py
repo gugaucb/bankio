@@ -21,11 +21,12 @@ def transfer_list_create(request):
         dest_raw = (form.get("destination_account") or "").strip()
         dest_id = None
         if dest_raw:
-            field = "pk" if dest_raw.isdigit() else "account_number"
-            try:
-                dest_id = Account.objects.get(**{field: dest_raw}).pk
-            except Account.DoesNotExist:
-                pass
+            # account numbers are all-numeric, so try account_number first
+            # and fall back to pk for internal shortcuts
+            acct = Account.objects.filter(account_number=dest_raw).first()
+            if acct is None and dest_raw.isdigit():
+                acct = Account.objects.filter(pk=dest_raw).first()
+            dest_id = acct.pk if acct else None
         try:
             transfer, created = execute_transfer(
                 actor=request.user,

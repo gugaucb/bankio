@@ -183,3 +183,25 @@ def test_concurrent_idempotent_requests_single_transfer(user_factory, account_fa
     assert len(set(results)) == 1
     assert src.current_balance == Decimal("950.00")
     assert dst.current_balance == Decimal("50.00")
+
+
+@pytest.mark.django_db
+def test_view_resolves_numeric_destination_by_account_number(alice, bob):
+    """Regression (browser DEFECT #1): a numeric destination must resolve by
+    account_number first — account numbers are all-numeric, so treating them
+    as pk silently turned internal transfers into external clearing moves."""
+    from django.test import Client
+
+    client = Client()
+    client.force_login(alice)
+    resp = client.post("/transfers/", {
+        "source_account": alice.checking.pk,
+        "destination_account": bob.checking.account_number,
+        "amount": "7.50",
+        "description": "by number",
+    })
+    assert resp.status_code == 302
+    t = Transfer.objects.order_by("-id").first()
+    assert t.destination_account_id == bob.checking.pk
+    assert t.status == "COMPLETED"
+    assert bob.checking.current_balance == Decimal("507.50")  # 500 fixture + 7.50

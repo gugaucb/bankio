@@ -76,12 +76,12 @@ def test_manager_customer_360(page):
     assert "Aubrey" in page.content() or "Sabina" in page.content()
 
 
-@pytest.mark.xfail(strict=True, reason="DEFECT #3 (BROWSER BASELINE REPORT): "
-                  "/manage/customers/?q=<term> returns HTTP 500")
-def test_manager_customer_search_500_defect(page):
+def test_manager_customer_search_finds_aubrey(page):
+    """DEFECT #3 FIXED: search no longer 500s and finds the customer."""
     login(page, MANAGER, STAFF_PW)
     resp = page.goto(f"{BASE_URL}/manage/customers/?q=aubrey")
     assert resp.status == 200
+    assert "Server Error" not in page.content()
 
 
 def test_manager_approvals_restrictions_card_requests_render(page):

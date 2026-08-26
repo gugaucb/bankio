@@ -479,6 +479,7 @@ def security_view(request):
     u = request.user
     pw_error = None
     risk_confirm_open = False
+    form = ChangePasswordForm(user=u)   # rendered on GET; rebind on POST below
     if request.method == "POST" and "change_password" in request.POST:
         form = ChangePasswordForm(user=u, data=request.POST)
         if form.is_valid():
@@ -635,6 +636,7 @@ def security_view(request):
     return render(request, "dashboard/security.html", {
         "nav": "security", "page_heading": "Security",
         "recent_logins": recent_logins, "pw_error": pw_error,
+        "form": form,
         "devices": devices,
         "sessions": sessions,
         "history_page": page,

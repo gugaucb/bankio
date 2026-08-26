@@ -9,22 +9,20 @@ def _wait_result(page):
 
 
 def _destination_number():
-    """The view treats a numeric destination as Account PK (see DEFECT note in
-    BROWSER BASELINE REPORT): account numbers are all-numeric, so typing them
-    resolves to no account and the transfer settles externally via clearing.
-    The internal-transfer journey therefore uses the PK, the working contract."""
+    """DEFECT #1 FIXED: numeric destinations resolve by account_number first,
+    falling back to pk — the journey types the real account number."""
     from conftest import db
     return db(
         "from apps.accounts.models import Account\n"
         "a=Account.objects.filter(customer__username='liam.johnson1').first()\n"
-        "print(a.pk)").splitlines()[-1]
+        "print(a.account_number)").splitlines()[-1]
 
 
 def test_internal_transfer_via_htmx(page):
     from conftest import db
     dst = _destination_number()
     before = db("from apps.accounts.models import Account\n"
-                "la=Account.objects.get(pk=%s).ledger_account\n"
+                "la=Account.objects.get(account_number='%s').ledger_account\n"
                 "print(sum((l.amount if l.side=='DEBIT' else -l.amount) for l in la.entries.all()))"
                 % dst)
     login(page)
@@ -38,7 +36,7 @@ def test_internal_transfer_via_htmx(page):
     result = page.locator("#transfer-result").inner_text().lower()
     assert "completed" in result or "success" in result, result
     after = db("from apps.accounts.models import Account\n"
-               "la=Account.objects.get(pk=%s).ledger_account\n"
+               "la=Account.objects.get(account_number='%s').ledger_account\n"
                "print(sum((l.amount if l.side=='DEBIT' else -l.amount) for l in la.entries.all()))"
                % dst)
     assert after != before  # destination ledger moved

@@ -58,9 +58,15 @@ Viewports: smoke Desktop 1440x900 e Mobile 390x844 (sem overflow >40px).
 ## Visual defects
 Nenhum bloco quebrado detectado; mobile sem scroll horizontal relevante.
 
-JUDGE VERDICT CRITÉRIO: ALL CRITICAL BROWSER JOURNEYS = PASS exige os 3
-defects acima corrigidos (journeys afetados hoje NÃO passam de verdade).
+## RESOLUÇÃO (fix/browser-defects-trio)
+Os 3 defects foram corrigidos e os pins viraram testes reais:
+- #1: `apps/transfers/views.py` — destino numérico resolve por account_number
+  primeiro (fallback pk); regressão Django em tests/test_transfers.py.
+- #2: `apps/identity/app_views.py` — `ChangePasswordForm` no contexto GET.
+- #3: `apps/managerops/views.py` — filtro de busca via user__* /
+  user__accounts__account_number (Customer não tem accounts direto).
+Gates: make verify **775 passed** (+1 regressão) · browser **55 passed,
+0 xfail**.
 
-# BROWSER BASELINE VERDICT: FAIL
-(54/56 green; bloqueado pelos DEFECTS #1–#3 — requer branch de correção
-antes de iniciar qualquer nova funcionalidade.)
+# BROWSER BASELINE VERDICT: PASS
+(ALL CRITICAL BROWSER JOURNEYS = PASS após correções.)

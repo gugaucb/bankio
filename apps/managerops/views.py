@@ -67,11 +67,12 @@ def customer_search(request):
     q = (request.GET.get("q") or "").strip()
     qs = visible_customers(profile)
     if q:
+        # visible_customers yields Customer rows: search through the related user
         qs = qs.filter(
-            Q(first_name__icontains=q) | Q(last_name__icontains=q) |
-            Q(email__iexact=q) | Q(phone__icontains=q) |
-            Q(username__iexact=q) | Q(customer_profile__customer_number__iexact=q) |
-            Q(accounts__account_number__iexact=q)
+            Q(user__first_name__icontains=q) | Q(user__last_name__icontains=q) |
+            Q(user__email__iexact=q) | Q(user__phone__icontains=q) |
+            Q(user__username__iexact=q) | Q(customer_number__iexact=q) |
+            Q(user__accounts__account_number__iexact=q)
         ).distinct()
     results = [
         {
@@ -81,7 +82,7 @@ def customer_search(request):
             "email_masked": _mask_email(c.user.email),
             "phone_masked": _mask_phone(c.user.phone),
         }
-        for c in qs.select_related("user", "user__customer_profile")[:20]
+        for c in qs.select_related("user")[:20]
     ]
     return render(request, "manager/search_results.html" if request.headers.get("HX-Request")
                   else "manager/customers.html", {"results": results, "q": q})
