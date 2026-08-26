@@ -13,8 +13,10 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.db import models
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Account
 from apps.audit.services import record as audit
@@ -81,6 +83,10 @@ def dashboard(request):
     u = request.user
     if not u.is_customer:
         return redirect("manager_dashboard")
+    if "replay-tour" in request.GET:
+        from . import tour as tour_mod
+        tour_mod.request_replay(request)
+        return redirect("dashboard")
     accounts = _customer_accounts(u)
     primary = accounts.first()
     txs = []
@@ -132,7 +138,47 @@ def dashboard(request):
         "chart_perf_labels": json.dumps(perf_labels),
         "chart_perf_values": json.dumps(perf_values),
     }
+
+    # ---- first-access tutorial: server decides whether it runs (FASE 9)
+    from . import tour as tour_mod
+    show_tour, _progress = tour_mod.tour_state(u, request)
+    if show_tour:
+        ctx["tour_steps"] = json.dumps(tour_mod.customer_steps())
+        ctx["tour_version"] = tour_mod.TOUR_VERSION
+        tour_mod.consume_replay(request)   # one-shot replay flag
+    ctx["show_tour"] = show_tour
+
     return render(request, "dashboard/index.html", ctx)
+
+
+@login_required
+@require_POST
+def tour_finish_view(request, outcome):
+    """POST-only + CSRF. Records completion or skip; server stays the
+    authority on whether the tutorial auto-starts again."""
+    from .models import TourProgress
+    from . import tour as tour_mod
+
+    if outcome not in ("complete", "skip"):
+        raise Http404
+    if outcome == "complete":
+        tour_mod.mark_completed(request.user)
+    else:
+        tour_mod.mark_skipped(request.user)
+    assert TourProgress.objects.filter(user=request.user).exists()
+    if request.headers.get("HX-Request") or request.headers.get("Accept", "").startswith("application/json") \
+            or request.headers.get("X-Requested-With") == "fetch":
+        return JsonResponse({"ok": True, "outcome": outcome})
+    return redirect("dashboard")
+
+
+@login_required
+@customer_only
+def tour_replay_view(request):
+    """Ajuda → 'Ver tutorial novamente' (server-side one-shot flag)."""
+    from . import tour as tour_mod
+    tour_mod.request_replay(request)
+    return redirect("dashboard")
 
 
 @login_required

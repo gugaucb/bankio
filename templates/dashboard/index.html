@@ -1,5 +1,6 @@
 {% extends "dashboard/shell.html" %}
-{% block title %}Dashboard — Bankio{% endblock %}
+{% block title %}Dashboard — Bankio{% include "dashboard/_tour.html" %}
+{% endblock %}
 {% block page %}
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
   <!-- Left 2/3 -->
@@ -127,4 +128,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 </script>
+{% include "dashboard/_tour.html" %}
 {% endblock %}

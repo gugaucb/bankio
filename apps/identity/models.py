@@ -70,3 +70,18 @@ class SessionRecord(models.Model):
 
     def __str__(self):
         return f"session {self.session_key[:8]}… of {self.user}"
+
+
+class TourProgress(models.Model):
+    """Server-side authority for the first-access tutorial: a row means the
+    tour was finished (completed_at) or dismissed (skipped_at) for a given
+    tour version. No row = the tour should auto-start on next dashboard load."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="tour_progress")
+    tour_version = models.CharField(max_length=20)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    skipped_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        state = "done" if self.completed_at else ("skipped" if self.skipped_at else "open")
+        return f"tour {self.tour_version} {state} for {self.user}"
