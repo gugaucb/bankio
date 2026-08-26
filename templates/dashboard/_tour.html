@@ -1,0 +1,61 @@
+{% if show_tour %}
+<link rel="stylesheet" href="/static/js/vendor/driver.css">
+<script src="/static/js/vendor/driver.iife.js" defer></script>
+<script>
+  // First-access tutorial. Presentation only: it never mutates financial
+  // data, never bypasses CSRF/RBAC, and degrades to a no-op if the library
+  // fails to load (application stays fully functional).
+  window.addEventListener("load", function () {
+    if (!window.driver || !window.driver.js) return;   // graceful degradation
+    var steps = JSON.parse(document.getElementById("tour-steps").textContent);
+    var finished = false;
+    function csrfToken() {
+      var el = document.querySelector("[name=csrfmiddlewaretoken]");
+      if (el) return el.value;
+      var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return m ? decodeURIComponent(m[1]) : "";
+    }
+    var token = csrfToken();
+
+    function report(outcome) {
+      try {
+        fetch("/app/tour/" + outcome + "/", {
+          method: "POST",
+          headers: {"X-CSRFToken": token, "X-Requested-With": "fetch"},
+        });
+      } catch (e) { /* notification of outcome is best-effort */ }
+    }
+
+    var driverObj = window.driver.js({
+      showProgress: true,
+      allowClose: true,
+      nextBtnText: "Próximo →",
+      prevBtnText: "← Voltar",
+      doneBtnText: "Concluir ✓",
+      steps: steps,
+      onDestroyed: function () {
+        if (!finished) report("skip");   // Escape / overlay click = skip
+      },
+    });
+
+    document.addEventListener("click", function (ev) {
+      var t = ev.target.closest("[data-tour-done]");
+      if (!t) return;
+      finished = true;
+      driverObj.destroy();
+      report("complete");
+    });
+    // mark the final popover button as "done" once the last step is reached
+    var observer = new MutationObserver(function () {
+      var btns = document.querySelectorAll(".driver-popover-next-btn");
+      btns.forEach(function (b) {
+        if (b.textContent.indexOf("Concluir") !== -1) b.setAttribute("data-tour-done", "1");
+      });
+    });
+    observer.observe(document.body, {childList: true, subtree: true});
+
+    driverObj.drive();
+  });
+</script>
+<script type="application/json" id="tour-steps">{{ tour_steps }}</script>
+{% endif %}
