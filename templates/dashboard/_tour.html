@@ -6,9 +6,17 @@
   // data, never bypasses CSRF/RBAC, and degrades to a no-op if the library
   // fails to load (application stays fully functional).
   window.addEventListener("load", function () {
-    if (!window.driver || !window.driver.js) return;   // graceful degradation
+    if (!window.driver || !window.driver.js || !window.driver.js.driver) return;   // graceful degradation
+    var drive = window.driver.js.driver;
     var steps = JSON.parse(document.getElementById("tour-steps").textContent);
-    var finished = false;
+    var reachedLastStep = false;
+    // The final step is identifiable by its "Concluir" button; remember it,
+    // because driver resets its state while destroying.
+    var mo = new MutationObserver(function () {
+      var btn = document.querySelector(".driver-popover-next-btn");
+      if (btn && btn.textContent.indexOf("Concluir") !== -1) reachedLastStep = true;
+    });
+    mo.observe(document.body, {childList: true, subtree: true});
     function csrfToken() {
       var el = document.querySelector("[name=csrfmiddlewaretoken]");
       if (el) return el.value;
@@ -26,7 +34,7 @@
       } catch (e) { /* notification of outcome is best-effort */ }
     }
 
-    var driverObj = window.driver.js({
+    var driverObj = drive({
       showProgress: true,
       allowClose: true,
       nextBtnText: "Próximo →",
@@ -34,28 +42,16 @@
       doneBtnText: "Concluir ✓",
       steps: steps,
       onDestroyed: function () {
-        if (!finished) report("skip");   // Escape / overlay click = skip
+        mo.disconnect();
+        // Reaching the final step and leaving it counts as completion
+        // ("Concluir ✓"); any other exit (Escape / overlay) is a skip.
+        report(reachedLastStep ? "complete" : "skip");
       },
     });
-
-    document.addEventListener("click", function (ev) {
-      var t = ev.target.closest("[data-tour-done]");
-      if (!t) return;
-      finished = true;
-      driverObj.destroy();
-      report("complete");
-    });
-    // mark the final popover button as "done" once the last step is reached
-    var observer = new MutationObserver(function () {
-      var btns = document.querySelectorAll(".driver-popover-next-btn");
-      btns.forEach(function (b) {
-        if (b.textContent.indexOf("Concluir") !== -1) b.setAttribute("data-tour-done", "1");
-      });
-    });
-    observer.observe(document.body, {childList: true, subtree: true});
 
     driverObj.drive();
   });
 </script>
-<script type="application/json" id="tour-steps">{{ tour_steps }}</script>
+{# Server-generated JSON (apps/identity/tour.py); only literal tour copy, no user input #}
+<script type="application/json" id="tour-steps">{{ tour_steps|safe }}</script>
 {% endif %}
