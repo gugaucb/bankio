@@ -25,8 +25,8 @@ services:
     environment:
       DATABASE_URL: postgres://bankio:bankio_dev_password@db:5432/bankio
       DJANGO_SETTINGS_MODULE: config.settings
-      SECRET_KEY: dev-only-secret-key-change-me
-      DEBUG: "1"
+      DJANGO_SECRET_KEY: dev-only-secret-key-change-me
+      DJANGO_DEBUG: "1"
     depends_on:
       db:
         condition: service_healthy
