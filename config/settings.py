@@ -6,11 +6,44 @@ from pathlib import Path
 
 import dj_database_url
 
+from config.env_utils import env_bool, env_list, env_str, secret_or_file
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-secret-key-change-me")
-DEBUG = os.environ.get("DEBUG", "0") == "1"
-ALLOWED_HOSTS = ["*"]
+# SECURITY: in production (DEBUG=false) an absent or known-insecure SECRET_KEY
+# is a hard failure — we never silently fall back to a shared dev key.
+DEBUG = env_bool("DJANGO_DEBUG", False)
+_INSECURE_DEV_KEY = "dev-only-secret-key-change-me"
+try:
+    SECRET_KEY = secret_or_file("DJANGO_SECRET_KEY") if not DEBUG else None
+except ValueError:
+    SECRET_KEY = None
+if SECRET_KEY is None:
+    if not DEBUG:
+        raise RuntimeError(
+            "DJANGO_SECRET_KEY is required when DJANGO_DEBUG=false "
+            "(set DJANGO_SECRET_KEY or DJANGO_SECRET_KEY_FILE)"
+        )
+    SECRET_KEY = _INSECURE_DEV_KEY
+elif SECRET_KEY == _INSECURE_DEV_KEY and not DEBUG:
+    raise RuntimeError("Refusing to start production with the insecure development SECRET_KEY")
+
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", [])
+for _origin in CSRF_TRUSTED_ORIGINS:
+    if not _origin.startswith(("http://", "https://")):
+        raise RuntimeError(f"CSRF_TRUSTED_ORIGINS entries must include scheme: {_origin!r}")
+
+TIME_ZONE = env_str("DJANGO_TIME_ZONE", "UTC")
+
+# Secure cookies are opt-out so localhost HTTP keeps working; production behind
+# HTTPS should set BANKIO_SECURE_COOKIES=true (documented in .env.example).
+_SECURE_COOKIES = env_bool("BANKIO_SECURE_COOKIES", not DEBUG)
+SESSION_COOKIE_SECURE = _SECURE_COOKIES
+CSRF_COOKIE_SECURE = _SECURE_COOKIES
+if _SECURE_COOKIES:
+    SECURE_SSL_REDIRECT = env_bool("BANKIO_SSL_REDIRECT", False)
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -77,7 +110,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": dj_database_url.config(
-        default="postgres://bankio:bankio_dev_password@localhost:5434/bankio",
+        default=os.environ.get("DATABASE_URL")
+        # Local-development fallback only; docker compose always supplies a
+        # real DATABASE_URL built from POSTGRES_* variables.
+        or "postgres://bankio:bankio_dev_password@localhost:5434/bankio",
         conn_max_age=60,
     )
 }

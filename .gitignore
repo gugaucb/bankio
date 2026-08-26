@@ -1,4 +1,28 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.hypothesis/
 db.sqlite3
+
+# Local configuration & secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Build / tooling artifacts
+staticfiles/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# E2E artifacts
+e2e_browser/screenshots/
