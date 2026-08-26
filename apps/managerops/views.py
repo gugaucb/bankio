@@ -1,4 +1,5 @@
 """Manager portal views. Views validate HTTP + authorize; logic lives in services."""
+import json
 from decimal import Decimal
 
 from django.contrib import messages
@@ -58,6 +59,17 @@ def manager_dashboard(request):
         "appointments": Appointment.objects.filter(manager=request.user, completed=False, canceled=False)[:5],
         "branches": BankBranch.objects.all(),
     }
+
+    # first-access tutorial (staff variant): server-side state, role-scoped steps
+    from apps.identity import tour as tour_mod
+
+    show_tour, _progress = tour_mod.tour_state(request.user, request)
+    if show_tour:
+        ctx["tour_steps"] = json.dumps(tour_mod.staff_steps(profile.get_level_display()))
+        ctx["show_tour"] = True
+        tour_mod.consume_replay(request)
+    else:
+        ctx["show_tour"] = False
     return render(request, "manager/dashboard.html", ctx)
 
 

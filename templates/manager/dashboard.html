@@ -1,5 +1,6 @@
 {% extends "manager/base.html" %}
-{% block title %}Manager Overview — Bankio{% endblock %}
+{% block title %}Manager Overview — Bankio{% include "dashboard/_tour.html" %}
+{% endblock %}
 {% load humanize %}
 {% block page %}
 <h1 class="text-xl font-bold mb-1">Branch Operations</h1>
@@ -32,4 +33,5 @@
     </ul>
   </div>
 </div>
+{% include "dashboard/_tour.html" %}
 {% endblock %}
