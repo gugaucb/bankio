@@ -6,6 +6,7 @@ versionamento SemVer (`MAJOR.MINOR.PATCH`). Datas em YYYY-MM-DD.
 ## [Unreleased]
 
 ### Added
+- Senha escolhida pelo requerente no wizard de abertura de conta (obrigatória, validada, armazenada como hash; aprovação cria o usuário com a senha escolhida; fallback temporário para rascunhos legados)
 - Configuração externa completa (.env.example, helpers env_*, suporte *_FILE/Docker Secrets, falha explícita sem SECRET_KEY em produção) — FASE 10 B1
 - `bootstrap_admin` idempotente para o admin inicial via `BANKIO_ADMIN_*` — FASE 10 B1
 - Imagem de distribuição: não-root, Gunicorn + WhiteNoise, `/healthz/` com checagem real do banco — FASE 10 B2
