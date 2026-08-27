@@ -15,10 +15,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Static assets are baked into the image. The inline DJANGO_SECRET_KEY is a
-# throwaway value scoped to this single RUN layer only — never persisted via
-# ARG/ENV — because settings refuse to boot in production mode without one.
-RUN DJANGO_SECRET_KEY=build-time-collectstatic-only python manage.py collectstatic --noinput
+# Static assets are baked into the image. The secret below is a non-secret
+# placeholder satisfying settings' production guard inside this RUN layer only;
+# using a BuildKit secret mount would keep even the string out of history.
+RUN --mount=type=secret,id=django_secret_key,required=false \
+    DJANGO_SECRET_KEY="$([ -f /run/secrets/django_secret_key ] && cat /run/secrets/django_secret_key || echo build-time-collectstatic-only)" \
+    python manage.py collectstatic --noinput
 
 USER bankio
 
