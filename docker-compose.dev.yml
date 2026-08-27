@@ -1,0 +1,7 @@
+# Development overlay: live-code bind mount + Django runserver (auto-reload).
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+  web:
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
