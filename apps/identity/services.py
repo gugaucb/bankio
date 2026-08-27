@@ -356,19 +356,26 @@ def _login_risk_evaluation(user, request, device=None):
 
 
 def attempt_login(username, password, request):
-    """Returns (user, needs_otp). Raises LoginLocked when temporarily locked."""
-    try:
-        user = User.objects.get(username=username)
-    except User.DoesNotExist:
+    """Returns (user, needs_otp). Raises LoginLocked when temporarily locked.
+
+    The identifier may be the username OR the account email (portal applicants
+    sign in with the email from their application; usernames are generated).
+    """
+    identifier = str(username or "").strip()
+    user = User.objects.filter(username=identifier).first()
+    if user is None and identifier:
+        user = User.objects.filter(email__iexact=identifier).first()
+    if user is None:
         return None, False
+    resolved_username = user.username
 
     now = timezone.now()
     if user.locked_until and user.locked_until > now:
         raise LoginLocked(f"Account locked until {user.locked_until.isoformat()}")
 
-    user = authenticate(request, username=username, password=password)
+    user = authenticate(request, username=resolved_username, password=password)
     if user is None:
-        u = User.objects.filter(username=username).first()
+        u = User.objects.filter(username=resolved_username).first()
         if u:
             u.failed_login_count += 1
             if u.failed_login_count >= MAX_FAILED:
