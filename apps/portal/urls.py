@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     # public marketing
+    path("healthz/", views.healthz, name="portal_healthz"),
     path("", views.home, name="portal_home"),
     path("personal/", views.personal, name="portal_personal"),
     path("business/", views.business, name="portal_business"),

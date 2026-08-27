@@ -8,3 +8,4 @@ hypothesis==6.122.1
 playwright==1.49.1
 gunicorn==23.0.0
 cryptography==44.0.1
+whitenoise==6.8.2

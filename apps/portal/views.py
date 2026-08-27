@@ -19,6 +19,18 @@ from .services import (ApplicationError, STEPS, TOTAL_STEPS, decide_application,
 
 # ------------------------------------------------------------- public pages
 
+def healthz(request):
+    """Readiness probe: process up AND database reachable. Unauthenticated."""
+    from django.db import connection
+    try:
+        with connection.cursor() as cur:
+            cur.execute("SELECT 1")
+            cur.fetchone()
+    except Exception:
+        return JsonResponse({"status": "db-unreachable"}, status=503)
+    return JsonResponse({"status": "ok"})
+
+
 def home(request):
     return render(request, "site/home.html")
 
