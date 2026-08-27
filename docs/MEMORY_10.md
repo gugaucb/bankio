@@ -35,6 +35,7 @@ Data: 2026-08-27 · Tag base: `baseline/pre-distribution` · Estratégia: ORQUES
 
 ## Pendências intencionais (ação do mantenedor)
 
-- Escolher licença (LICENSE_DECISION.md) e popular `org.opencontainers.image.licenses`.
-- Criar secrets `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` no GitHub; ativar Dependentabot alerts/secret scanning/push protection na UI do GitHub (não configurável via repo files).
+- ~~Escolher licença~~ → **RESOLVIDO: GPL-3.0-only** (decisão do mantenedor; LICENSE na raiz, OCI label `org.opencontainers.image.licenses=GPL-3.0-only`, README/CHANGELOG atualizados, LICENSE_DECISION.md removido). Merge `feat/license-gpl3`.
+- Criar secrets `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` no GitHub (consumidos via `${{ secrets.* }}` no workflow); ativar Dependabot alerts/secret scanning/push protection na UI do GitHub (não configurável via repo files).
 - Publicar primeira tag `v1.0.0` para disparar o pipeline Docker Hub e repetir clean-install usando a imagem publicada.
+- Remote `origin` apontando para https://github.com/gugaucb/bankio (1º push pendente).
