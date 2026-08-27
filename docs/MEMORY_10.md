@@ -37,5 +37,6 @@ Data: 2026-08-27 · Tag base: `baseline/pre-distribution` · Estratégia: ORQUES
 
 - ~~Escolher licença~~ → **RESOLVIDO: GPL-3.0-only** (decisão do mantenedor; LICENSE na raiz, OCI label `org.opencontainers.image.licenses=GPL-3.0-only`, README/CHANGELOG atualizados, LICENSE_DECISION.md removido). Merge `feat/license-gpl3`.
 - Criar secrets `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` no GitHub (consumidos via `${{ secrets.* }}` no workflow); ativar Dependabot alerts/secret scanning/push protection na UI do GitHub (não configurável via repo files).
-- Publicar primeira tag `v1.0.0` para disparar o pipeline Docker Hub e repetir clean-install usando a imagem publicada.
-- Remote `origin` apontando para https://github.com/gugaucb/bankio (1º push pendente).
+- ~~Publicar primeira tag `v1.0.0`~~ → **CONCLUÍDO 2026-08-27**: pipeline `Docker Hub Release` (test + build-push multi-arch) = **success**; imagem publicada em https://hub.docker.com/r/gugaucb/bankio com tags `1.0.0`, `1.0`, `1`, `latest` (183 MB, amd64+arm64, SBOM/provenance).
+- **Clean-install via imagem publicada**: `docker-compose.yml` da tag v1.0.0 + `image: gugaucb/bankio:1.0.0` (sem build local), `.env` novo, migrate → bootstrap_admin (`hubadmin`) → up → `/healthz/ ok` → login browser OK, zero erros JS. Requisito final do juiz atendido: repositório público + docs + config externa + imagem publicada.
+- Remote `origin` = git@github.com:gugaucb/bankio (SSH; push de main `3eb23a4` ok). Dependabot abriu PRs automáticos (pip/actions) com CI rodando.
