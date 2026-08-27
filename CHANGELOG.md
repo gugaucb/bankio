@@ -12,6 +12,7 @@ versionamento SemVer (`MAJOR.MINOR.PATCH`). Datas em YYYY-MM-DD.
 - Compose portátil com interpolação `${VAR}` e overlay dev separado — FASE 10 B2
 - Documentação de primeira instalação (README Quick Start, dev vs produção, checklist `check --deploy`) — FASE 10 B3
 - Higiene open source: CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, SUPPORT, templates de issue/PR — FASE 10 B4
+- Licença GPL-3.0-only escolhida pelo mantenedor; OCI label `org.opencontainers.image.licenses` definida — FASE 10 follow-up
 
 ### Changed
 - Tutorial de primeiro acesso por papel (Driver.js vendored, estado server-side `TourProgress`) — FASE 9

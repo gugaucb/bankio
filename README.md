@@ -106,4 +106,4 @@ Veja [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licença
 
-Consulte o arquivo LICENSE (decisão pendente do mantenedor).
+Bankio é distribuído sob a [GNU GPL v3](LICENSE) — derivados distribuídos devem publicar o código-fonte sob a mesma licença.
