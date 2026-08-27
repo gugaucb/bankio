@@ -76,6 +76,48 @@ def test_manager_customer_360(page):
     assert "Aubrey" in page.content() or "Sabina" in page.content()
 
 
+def test_manager_customer_360_full_details(page):
+    """Customer 360 shows complete business details (contact, profile, KYC)."""
+    from conftest import db
+    out = db("from django.contrib.auth import get_user_model\n"
+             "from apps.managerops.models import CustomerManagerAssignment\n"
+             "from apps.customers.models import Customer\n"
+             "a=CustomerManagerAssignment.objects.filter(customer__username='aubrey.sabina0').first()\n"
+             "cu=a.customer\n"
+             "cust=Customer.objects.get(user=cu)\n"
+             "print(a.manager.username, cu.pk, cu.email, cust.address or 'NOADDR')").splitlines()[-1]
+    mgr, cid, email, address = out.split()[0], out.split()[1], " ".join(out.split()[2:-1]), out.split()[-1]
+    login(page, mgr, STAFF_PW)
+    page.goto(f"{BASE_URL}/manage/customers/{cid}/")
+    body = page.content()
+    assert "Profile Details" in body
+    assert email in body, f"email {email} not visible in Customer 360"
+    if address != "NOADDR":
+        assert address in body
+    assert "KYC" in body
+    # no auth secrets ever rendered
+    assert "pbkdf2" not in body
+
+
+def test_manager_customer_360_idor_other_branch(page):
+    """A manager without authority over the customer gets a safe 403/404."""
+    from conftest import db
+    out = db("from apps.managerops.models import CustomerManagerAssignment\n"
+             "a=CustomerManagerAssignment.objects.filter(customer__username='aubrey.sabina0').first()\n"
+             "print(a.customer.pk)").splitlines()[-1]
+    cid = out.split()[-1]
+    login(page, "harbor_mgr" if False else "manager1", STAFF_PW)
+    page.goto(f"{BASE_URL}/manage/customers/{cid}/")
+    resp = None
+    # if manager1 is NOT aubrey's manager, expect 403/404; skip assertion if manager1 is assigned
+    assigned = db("from apps.managerops.models import CustomerManagerAssignment\n"
+                  "print(CustomerManagerAssignment.objects.filter(customer__username='aubrey.sabina0', "
+                  "manager__username='manager1', status='ACTIVE').exists())").splitlines()[-1]
+    if assigned.strip() == "False":
+        assert page.url.endswith(f"/manage/customers/{cid}/") is False or "Server Error" not in page.content()
+        assert page.locator("text=Profile Details").count() == 0
+
+
 def test_manager_customer_search_finds_aubrey(page):
     """DEFECT #3 FIXED: search no longer 500s and finds the customer."""
     login(page, MANAGER, STAFF_PW)

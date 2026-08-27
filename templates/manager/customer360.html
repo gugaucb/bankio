@@ -20,6 +20,43 @@
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
   <section class="xl:col-span-2 space-y-5">
     <div class="card p-6">
+      <h3 class="font-semibold mb-3">Profile Details</h3>
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Full name</dt><dd class="font-medium">{{ c.first_name }} {{ c.last_name }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Username</dt><dd class="font-mono text-xs">{{ c.username }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Customer #</dt><dd class="font-mono text-xs">{{ profile_row.customer_number }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Email</dt><dd>{{ c.email }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Phone</dt><dd>{{ c.phone|default:"—" }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Address</dt><dd>{{ profile_row.address|default:"—" }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Occupation</dt><dd>{{ profile_row.occupation|default:"—" }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Monthly income</dt><dd>{% if profile_row.monthly_income %}${{ profile_row.monthly_income|floatformat:2|intcomma }}{% else %}—{% endif %}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Preferred currency</dt><dd>{{ profile_row.preferred_currency }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Segment</dt><dd>{{ profile_row.segment }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Status</dt>
+          <dd><span class="px-2 py-0.5 rounded-lg text-xs {% if profile_row.status == 'ACTIVE' %}bg-emerald-100 text-emerald-800{% else %}bg-red-100 text-red-700{% endif %}">{{ profile_row.status }}</span></dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Marketing opt-in</dt><dd>{{ profile_row.marketing_opt_in|yesno:"Yes,No" }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Registered on</dt><dd>{{ profile_row.created_at|date:"d M Y H:i" }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Manager</dt><dd>{{ profile_row.assigned_manager|default:"—" }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Branch</dt><dd>{{ profile_row.branch.name|default:"—" }}</dd></div>
+      </dl>
+<p class="text-[11px] text-gray-400 mt-1">Only business fields are shown — authentication secrets are never displayed.</p>
+    </div>
+
+    <div class="card p-6">
+      <h3 class="font-semibold mb-3">KYC</h3>
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Status</dt>
+          <dd><span class="px-2 py-0.5 rounded-lg text-xs {% if kyc_status == 'APPROVED' %}bg-emerald-100 text-emerald-800{% elif kyc_status == 'PENDING' %}bg-amber-100 text-amber-800{% else %}bg-red-100 text-red-700{% endif %}">{{ kyc_status }}</span></dd></div>
+        {% if kyc %}
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Risk level</dt><dd>{{ kyc.risk_level }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Reviewed by</dt><dd>{{ kyc.reviewed_by|default:"—" }}</dd></div>
+        <div class="py-1.5 flex justify-between sm:justify-start sm:gap-3"><dt class="text-gray-400 w-36 shrink-0">Reviewed on</dt><dd>{{ kyc.created_at|date:"d M Y H:i" }}</dd></div>
+        <div class="py-1.5 col-span-full flex gap-3"><dt class="text-gray-400 w-36 shrink-0">Notes</dt><dd>{{ kyc.notes|default:"—" }}</dd></div>
+        {% endif %}
+      </dl>
+    </div>
+
+    <div class="card p-6">
       <h3 class="font-semibold mb-3">Accounts</h3>
       <table class="w-full text-sm">
         <thead><tr class="text-left text-xs text-gray-400 uppercase"><th>Number</th><th>Type</th><th>Status</th><th class="text-right">Balance</th></tr></thead>
