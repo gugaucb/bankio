@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: bankio_test
+          POSTGRES_USER: bankio
+          POSTGRES_PASSWORD: bankio_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bankio -d bankio_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_DEBUG: "true"
+      DJANGO_SECRET_KEY: ci-only-secret-key-not-production
+      DATABASE_URL: postgres://bankio:bankio_ci_password@localhost:5432/bankio_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Django system check
+        run: python manage.py check
+
+      - name: Missing migrations check
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Run test suite
+        run: pytest -q
+
+  deploy-check:
+    # Production-mode configuration review (no secrets): settings must be
+    # able to reach a deploy-safe posture when given real values.
+    runs-on: ubuntu-latest
+    needs: tests
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_DEBUG: "false"
+      # CI-only placeholder values shaped like production ones; never used to serve traffic.
+      DJANGO_SECRET_KEY: ci-deploy-check-placeholder-key-with-enough-entropy-0123456789
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install Django==5.1.4 psycopg[binary]==3.2.3 dj-database-url==2.3.0
+
+      - name: Evaluate deployment checks
+        run: python manage.py check --deploy | tee /tmp/deploy-report.txt && cat /tmp/deploy-report.txt
