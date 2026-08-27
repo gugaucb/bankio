@@ -23,6 +23,12 @@
       </dl>
       <p class="mt-2 text-xs text-gray-400">Demo: credentials are shown here. You'll be asked to change your password after signing in.</p>
     </div>
+    {% elif app.status == "ACCOUNT_CREATED" %}
+    <div class="mt-5 bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm">
+      <p class="font-semibold text-emerald-900 mb-1">Welcome to Bankio — your account is ready 🎉</p>
+      <p class="text-gray-600">Sign in at <a href="/login/" class="text-emerald-700 underline">/login/</a> using your email
+        (<span class="font-semibold">{{ app.email }}</span>) and the password you chose in the application.</p>
+    </div>
     {% endif %}
   </div>
   <p class="mt-6 text-sm text-gray-500">Keep your application reference to check the status anytime at

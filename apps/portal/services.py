@@ -228,12 +228,13 @@ def decide_application(req, approver, approve: bool, reason=""):
     if User.objects.filter(email__iexact=app.email).exists():
         raise ApprovalError("DUPLICATE_CUSTOMER")
     branch = BankBranch.objects.first()
-    names = app.full_name.rsplit(" ", 1)
+    parts = app.full_name.split()
+    first_name, last_name = parts[0], parts[-1] if len(parts) > 1 else ""
     user = User.objects.create_user(
-        username=f"{names[0].lower()}.{names[-1].lower()}{secrets.token_hex(3)}",
+        username=f"{first_name.lower()}.{last_name.lower()}{secrets.token_hex(3)}",
         email=app.email,
         phone=app.data.get("phone", ""),
-        first_name=names[0], last_name=names[-1] if len(names) > 1 else "",
+        first_name=first_name, last_name=last_name,
         role="PREMIUM_CUSTOMER" if "PREMIUM" in app.products else "CUSTOMER",
     )
     # Credential delivery: prefer the password chosen by the applicant in the

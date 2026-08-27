@@ -273,6 +273,7 @@ def test_approved_application_creates_customer_and_account(c, branches):
     assert app.status == "ACCOUNT_CREATED"
     user = User.objects.get(email="nora@example.com")
     assert user.is_customer
+    assert " " not in user.username  # generated username must be a valid identifier
     assert user.accounts.exists()  # active account created
     assert user.accounts.first().account_number
     assert app.customer_id == user.pk
