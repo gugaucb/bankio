@@ -1,7 +1,7 @@
 Django==5.1.4
 psycopg[binary]==3.2.3
 dj-database-url==2.3.0
-pytest==8.3.4
+pytest==9.1.1
 pytest-django==4.9.0
 pytest-cov==6.0.0
 hypothesis==6.122.1
