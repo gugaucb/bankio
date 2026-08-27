@@ -104,13 +104,15 @@ def test_full_wizard_submit_and_status(c, branches):
     app = complete_draft(c)
     r = c.get(f"/open-account/{app.current_step}/")  # lands on review
     assert b"Review" in r.content or r.status_code == 200
-    r = c.post("/application/submit/", {"idempotency_key": f"portal-{app.reference}"})
+    r = c.post("/application/submit/", {"idempotency_key": f"portal-{app.reference}",
+                                        "password": "Nora-Pass-2026", "password2": "Nora-Pass-2026"})
     assert r.status_code == 302
     app.refresh_from_db()
     assert app.status == "IDENTITY_REVIEW"
     # status page shows reference + next step
     r = c.get(f"/application/status/{app.reference}/")
     assert b"APPLICATION RECEIVED" in r.content
+    assert b"Temporary password" not in r.content  # chosen password replaces temp delivery
     # manager review request queued
     assert ApprovalRequest.objects.filter(operation_type="ONBOARDING_REVIEW").exists()
 
@@ -156,7 +158,9 @@ def test_duplicate_existing_customer_rejected_on_submit(c, branches, aubrey):
     ]
     for s, d in steps:
         c.post(f"/open-account/{s}/next/", d)
-    r = c.post("/application/submit/", {"idempotency_key": "k-dup"}, follow=True)
+    r = c.post("/application/submit/", {"idempotency_key": "k-dup",
+                                        "password": "Dup-Pass-2026", "password2": "Dup-Pass-2026"},
+               follow=True)
     app.refresh_from_db()
     assert app.status == "DRAFT"  # not submitted
 
@@ -189,9 +193,9 @@ def test_submission_idempotent_no_duplicates(c, branches):
     key = f"portal-{app.reference}"
     from apps.portal.services import submit_application, ApplicationError
 
-    a1 = submit_application(app, idempotency_key=key)
+    a1 = submit_application(app, idempotency_key=key, password="Nora-Pass-2026")
     n1 = ApprovalRequest.objects.filter(operation_type="ONBOARDING_REVIEW").count()
-    a2 = submit_application(app, idempotency_key=key)  # double click
+    a2 = submit_application(app, idempotency_key=key, password="Nora-Pass-2026")  # double click
     assert a1.pk == a2.pk
     assert ApprovalRequest.objects.filter(operation_type="ONBOARDING_REVIEW").count() == n1 == 1
     # a second application with the same idempotency key cannot exist
@@ -203,11 +207,63 @@ def test_submission_idempotent_no_duplicates(c, branches):
 # ------------------------------------------- approval integration (KYC gate)
 
 @pytest.mark.django_db(transaction=True)
+def test_password_mismatch_blocks_submission(c, branches):
+    app = complete_draft(c)
+    r = c.post("/application/submit/", {"idempotency_key": "k-mm",
+                                        "password": "Nora-Pass-2026",
+                                        "password2": "Different-2026"})
+    assert r.status_code == 302
+    body = c.get(r.url).content.decode()
+    assert "do not match" in body.lower()
+    app.refresh_from_db()
+    assert app.status == "DRAFT"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_weak_password_rejected(c, branches):
+    app = complete_draft(c)
+    from apps.portal.services import submit_application, ApplicationError
+
+    with pytest.raises(ApplicationError) as e:
+        submit_application(app, password="12345678")  # all numeric
+    assert e.value.code == "WEAK_PASSWORD"
+    with pytest.raises(ApplicationError) as e:
+        submit_application(app, password="short1a")  # under minimum length
+    assert e.value.code == "WEAK_PASSWORD"
+    with pytest.raises(ApplicationError) as e:
+        submit_application(app, password=None)
+    assert e.value.code == "MISSING_PASSWORD"
+    app.refresh_from_db()
+    assert app.status == "DRAFT"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_legacy_draft_without_password_gets_temp_fallback(c, branches):
+    """Drafts submitted before the wizard collected passwords still onboard."""
+    app = complete_draft(c)
+    from apps.portal.services import submit_application
+
+    submit_application(app, password="Nora-Pass-2026")
+    app.data.pop("password")  # simulate a legacy submission
+    app.save()
+    mgr = make_manager("legacy_mgr", "RELATIONSHIP_MANAGER", branches)
+    req = ApprovalRequest.objects.get(operation_type="ONBOARDING_REVIEW")
+    from apps.managerops.services import decide_approval
+
+    decide_approval(approver=mgr, approval_id=req.pk, approve=True)
+    app.refresh_from_db()
+    user = User.objects.get(email="nora@example.com")
+    assert app.temp_password  # temp credential issued for legacy draft
+    assert user.check_password(app.temp_password)
+
+
+
+@pytest.mark.django_db(transaction=True)
 def test_approved_application_creates_customer_and_account(c, branches):
     app = complete_draft(c)
     from apps.portal.services import submit_application
 
-    submit_application(app)
+    submit_application(app, password="Nora-Pass-2026")
     mgr = make_manager("portal_mgr", "RELATIONSHIP_MANAGER", branches)
     req = ApprovalRequest.objects.get(operation_type="ONBOARDING_REVIEW")
     from apps.managerops.services import decide_approval
@@ -220,6 +276,11 @@ def test_approved_application_creates_customer_and_account(c, branches):
     assert user.accounts.exists()  # active account created
     assert user.accounts.first().account_number
     assert app.customer_id == user.pk
+    # chosen password: hash stored, never plaintext; no temp credential issued
+    assert user.check_password("Nora-Pass-2026")
+    assert not app.temp_password
+    stored = app.data["password"]
+    assert stored.startswith("pbkdf2_") and "Nora-Pass-2026" not in stored
 
 
 @pytest.mark.django_db(transaction=True)
@@ -227,7 +288,7 @@ def test_rejected_application_does_not_create_account(c, branches):
     app = complete_draft(c)
     from apps.portal.services import submit_application
 
-    submit_application(app)
+    submit_application(app, password="Nora-Pass-2026")
     mgr = make_manager("rej_mgr", "BRANCH_MANAGER", branches)
     req = ApprovalRequest.objects.get(operation_type="ONBOARDING_REVIEW")
     from apps.managerops.services import decide_approval
@@ -245,7 +306,7 @@ def test_low_risk_requires_relationship_but_high_risk_needs_branch(c, branches):
     app = complete_draft(c)
     from apps.portal.services import submit_application, _risk_level
 
-    submit_application(app)
+    submit_application(app, password="Nora-Pass-2026")
     rel = make_manager("lvl_rel", "RELATIONSHIP_MANAGER", branches)
     br = make_manager("lvl_br", "BRANCH_MANAGER", branches)
     from apps.managerops.services import decide_approval
