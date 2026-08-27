@@ -192,6 +192,7 @@ def wizard(request, step: int = 1):
                   ("Monthly income", "monthly_income"), ("Tax residency", "tax_residency")]
         ctx["review_fields"] = [(l, app.data.get(k, "")) for l, k in labels]
         return render(request, "site/wizard_review.html", ctx)
+
     return render(request, "site/wizard_step.html", ctx)
 
 
@@ -239,10 +240,17 @@ def submit_view(request):
     app = _current_app(request)
     if app is None or request.method != "POST":
         return redirect("portal_open_account")
+    password = request.POST.get("password", "")
+    if password != request.POST.get("password2", ""):
+        request.session["wizard_error"] = "Passwords do not match"
+        return redirect("portal_wizard_step", step=TOTAL_STEPS)
     try:
-        submit_application(app, idempotency_key=request.POST.get("idempotency_key", ""))
+        submit_application(app, idempotency_key=request.POST.get("idempotency_key", ""),
+                           password=password)
     except ApplicationError as e:
-        messages.error(request, e.code.replace("_", " ").title())
+        friendly = {"MISSING_PASSWORD": "Password is required",
+                    "WEAK_PASSWORD": "Password too weak — at least 8 characters and not all numbers"}
+        request.session["wizard_error"] = friendly.get(e.code, e.code.replace("_", " ").title())
         return redirect("portal_wizard_step", step=TOTAL_STEPS)
     request.session.pop("portal_application", None)
     audit(action="PORTAL_APPLICATION_SUBMITTED_HTTP")

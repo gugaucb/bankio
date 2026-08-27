@@ -9,6 +9,9 @@ Rules (enforced here, never in views/templates):
 import secrets
 from datetime import date, datetime
 
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
@@ -120,10 +123,23 @@ def _risk_level(app: AccountApplication) -> str:
 
 
 @transaction.atomic
-def submit_application(app: AccountApplication, idempotency_key: str = "") -> AccountApplication:
-    """Validate completeness, mark SUBMITTED, queue manager review. Idempotent."""
+def submit_application(app: AccountApplication, idempotency_key: str = "",
+                       password: str | None = None) -> AccountApplication:
+    """Validate completeness, mark SUBMITTED, queue manager review. Idempotent.
+
+    `password` is the credential chosen by the applicant in the wizard. Only its
+    Django hash is stored (inside app.data) — the plaintext never reaches the
+    database and is discarded from memory after hashing.
+    """
     if app.status != ApplicationStatus.DRAFT:
         return app  # idempotent re-submission returns the same application
+    if not password:
+        raise ApplicationError("MISSING_PASSWORD")
+    try:
+        validate_password(password)
+    except ValidationError:
+        raise ApplicationError("WEAK_PASSWORD")
+    app.data["password"] = make_password(password)
     missing = []
     for idx, (_, fields) in enumerate(STEPS[:7]):
         err = validate_step(idx, app.data)
@@ -220,11 +236,17 @@ def decide_application(req, approver, approve: bool, reason=""):
         first_name=names[0], last_name=names[-1] if len(names) > 1 else "",
         role="PREMIUM_CUSTOMER" if "PREMIUM" in app.products else "CUSTOMER",
     )
-    # Demo delivery: temporary credentials are stored on the application and
-    # shown once on the application status page (production would email them).
-    temp_password = "Bankio-" + secrets.token_urlsafe(9)
-    user.set_password(temp_password)
-    app.temp_password = temp_password
+    # Credential delivery: prefer the password chosen by the applicant in the
+    # wizard (stored only as a Django hash). Legacy drafts submitted before the
+    # wizard collected passwords fall back to a temporary credential shown once
+    # on the status page (production would email it).
+    pw_hash = str(app.data.get("password", ""))
+    if pw_hash.split("$", 1)[0] in ("pbkdf2_sha256", "argon2", "bcrypt", "scrypt"):
+        user.password = pw_hash  # already hashed; never store plaintext
+    else:
+        temp_password = "Bankio-" + secrets.token_urlsafe(9)
+        user.set_password(temp_password)
+        app.temp_password = temp_password
     user.save()
     Customer.objects.create(user=user,
                             customer_number=f"CUST-{secrets.token_hex(4).upper()}",
