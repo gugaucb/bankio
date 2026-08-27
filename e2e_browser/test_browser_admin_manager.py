@@ -134,6 +134,21 @@ def test_manager_approvals_restrictions_card_requests_render(page):
         assert "Server Error" not in page.content(), path
 
 
+def test_card_requests_page_sidebar(page):
+    """REGRESSION FIX: card-requests must render the shared manager sidebar."""
+    login(page, MANAGER, STAFF_PW)
+    page.goto(f"{BASE_URL}/manage/card-requests/")
+    sidebar = page.locator("aside")
+    assert sidebar.count() >= 1 and sidebar.is_visible()
+    for nav in ("/manage/customers/", "/manage/card-requests/",
+                "/manage/approvals/", "/manage/restrictions/"):
+        assert sidebar.locator(f'a[href="{nav}"]').count() >= 1, nav
+    assert "Card Requests" in page.content()
+    # navigation from the sidebar works
+    sidebar.locator('a[href="/manage/approvals/"]').click()
+    page.wait_for_load_state()
+    assert "/manage/approvals/" in page.url
+
 # ---------------------------------------------------------- FRAUD/SECOPS
 @pytest.mark.parametrize("path", [
     "/fraud/", "/fraud/alerts/",
