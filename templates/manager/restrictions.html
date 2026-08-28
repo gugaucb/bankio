@@ -2,15 +2,40 @@
 {% block title %}Restrictions — Bankio Ops{% endblock %}
 {% block page %}
 <h1 class="text-xl font-bold mb-5">Active Restrictions</h1>
-<div class="card overflow-hidden max-w-4xl">
+<div class="card overflow-hidden max-w-5xl">
+{% if not active %}
+<div class="px-6 py-10 text-center">
+  <p class="text-2xl mb-2">✅</p>
+  <p class="font-semibold text-gray-700">Nenhuma restrição encontrada.</p>
+  <p class="text-sm text-gray-400 mt-1">No active restrictions for the customers under your authority.</p>
+</div>
+{% endif %}
+{% if active %}
 <table class="w-full text-sm">
-<thead><tr class="text-left text-xs uppercase text-gray-400 bg-gray-50"><th class="px-4 py-2">Account</th><th>Customer</th><th>Type</th><th>Reason</th></tr></thead>
+<thead><tr class="text-left text-xs uppercase text-gray-400 bg-gray-50">
+  <th class="px-4 py-2">Account</th><th>Customer</th><th>Type</th><th>Reason</th>
+  <th>Created</th><th>Requested / Approved by</th><th></th></tr></thead>
 <tbody>{% for r in active %}
-<tr class="border-t"><td class="px-4 py-2 font-mono text-xs">{{ r.account.account_number }}</td>
-<td>{{ r.account.customer.get_full_name }}</td>
-<td><span class="px-2 py-0.5 rounded-lg text-xs bg-red-100 text-red-700">{{ r.restriction_type }}</span></td>
-<td class="text-gray-500">{{ r.reason }}</td></tr>
-{% empty %}<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No active restrictions.</td></tr>{% endfor %}
-</tbody></table></div>
+<tr class="border-t">
+  <td class="px-4 py-2 font-mono text-xs">{{ r.account.account_number }}</td>
+  <td><a class="text-emerald-700 underline" href="/manage/customers/{{ r.account.customer.pk }}/">{{ r.account.customer.get_full_name }}</a></td>
+  <td><span class="px-2 py-0.5 rounded-lg text-xs {% if r.restriction_type == 'AML_HOLD' or r.restriction_type == 'LEGAL_HOLD' %}bg-purple-100 text-purple-800{% else %}bg-red-100 text-red-700{% endif %}">{{ r.restriction_type }}</span>
+      {% if r.restriction_type == 'AML_HOLD' or r.restriction_type == 'LEGAL_HOLD' %}<span class="text-[10px] text-gray-400 block">Compliance only</span>{% endif %}</td>
+  <td class="text-gray-500">{{ r.reason }}</td>
+  <td class="whitespace-nowrap text-xs">{{ r.effective_at|date:"d M Y, H:i" }}</td>
+  <td class="text-xs">{{ r.requested_by|default:"—" }}{% if r.approved_by %} / {{ r.approved_by }}{% endif %}</td>
+  <td>
+    {% if r.restriction_type != 'AML_HOLD' and r.restriction_type != 'LEGAL_HOLD' %}
+    <form method="post" action="/manage/restrictions/lift/" class="inline">
+      {% csrf_token %}
+      <input type="hidden" name="restriction_id" value="{{ r.pk }}">
+      <button class="text-xs px-2 py-1 rounded-lg border border-gray-300 hover:bg-gray-50">Lift</button>
+    </form>
+    {% endif %}
+  </td>
+</tr>
+{% endfor %}</tbody></table>
+{% endif %}
+</div>
 <p class="text-xs text-gray-400 mt-3">AML_HOLD and LEGAL_HOLD can only be removed by the Compliance role.</p>
 {% endblock %}
