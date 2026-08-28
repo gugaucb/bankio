@@ -1,0 +1,62 @@
+{% extends "manager/base.html" %}
+{% block title %}Account Funding — Bankio Ops{% endblock %}
+{% block page %}
+<div class="max-w-4xl space-y-6">
+  <h1 class="text-xl font-bold">Account Funding</h1>
+
+  <div class="card p-6">
+    <h2 class="font-semibold mb-3">New Funding (deposit)</h2>
+    <p class="text-xs text-gray-400 mb-4">Credits are posted to the ledger as a balanced double-entry journal.
+      The same idempotency key is ignored on replay — money is never created twice.</p>
+    <form method="post" class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+      {% csrf_token %}
+      <label class="sm:col-span-2">
+        <span class="text-gray-500 text-xs">Account</span>
+        <select name="account" required class="mt-1 w-full rounded-xl border-gray-200">
+          <option value="">— select —</option>
+          {% for a in accounts %}
+          <option value="{{ a.pk }}">{{ a.account_number }} · {{ a.customer.username }} · {{ a.type }} · {{ a.currency }}</option>
+          {% empty %}
+          <option value="" disabled>No active accounts under your authority</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        <span class="text-gray-500 text-xs">Amount</span>
+        <input name="amount" type="number" step="0.01" min="0.01" required
+               class="mt-1 w-full rounded-xl border-gray-200" placeholder="0.00">
+      </label>
+      <label>
+        <span class="text-gray-500 text-xs">Idempotency key</span>
+        <input name="idempotency_key" required class="mt-1 w-full rounded-xl border-gray-200 font-mono text-xs"
+               placeholder="e.g. branch-deposit-2026-001">
+      </label>
+      <label class="sm:col-span-2">
+        <span class="text-gray-500 text-xs">Reason</span>
+        <input name="reason" class="mt-1 w-full rounded-xl border-gray-200" placeholder="Cash deposit at branch">
+      </label>
+      <label>
+        <span class="text-gray-500 text-xs">External reference (simulated)</span>
+        <input name="external_ref" class="mt-1 w-full rounded-xl border-gray-200" placeholder="ACH-88123">
+      </label>
+      <div class="sm:col-span-2">
+        <button class="btn-primary">Post funding</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card p-6">
+    <h2 class="font-semibold mb-3">Recent Funding</h2>
+    <ul class="divide-y divide-gray-50 text-sm">
+      {% for j in recent %}
+      <li class="py-2.5 flex justify-between">
+        <span class="font-mono text-xs text-gray-500">{{ j.reference }}</span>
+        <span>{{ j.description }} · {{ j.posted_at|date:"d M Y, H:i" }}</span>
+      </li>
+      {% empty %}
+      <li class="py-6 text-center text-gray-400">No funding posted yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

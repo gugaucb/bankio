@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.accounts.models import Account
+from apps.accounts.models import Account, AccountStatus
 from apps.audit.services import record as audit
 from apps.compliance.models import FraudAlert, KYCReview
 from apps.identity.models import Role, User
@@ -272,6 +272,44 @@ def create_service_request(request, customer_id):
 
 # ------------------------------------------------------------ card requests
 @login_required
+@login_required
+def funding_view(request):
+    """GET: funding form + recent funding journals. POST: execute idempotent funding."""
+    profile = _ctx(request)
+    from apps.accounts.services import FundingError, fund_account
+    from apps.ledger.models import JournalEntry
+
+    accounts = Account.objects.filter(
+        customer__in=visible_customers(profile).values("user_id"),
+        status=AccountStatus.ACTIVE,
+    ).select_related("customer").order_by("account_number")
+    recent = (JournalEntry.objects.filter(reference__startswith="FUND-")
+              .order_by("-posted_at")[:10])
+    if request.method == "POST":
+        err = None
+        try:
+            result = fund_account(
+                manager=request.user,
+                account_id=request.POST.get("account"),
+                amount=request.POST.get("amount"),
+                reason=request.POST.get("reason", ""),
+                external_ref=request.POST.get("external_ref", ""),
+                idempotency_key=request.POST.get("idempotency_key", ""),
+            )
+            if result["replayed"]:
+                messages.info(request, "Funding already processed (replay ignored).")
+            else:
+                messages.success(request, f"Funding posted as {result['journal'].reference}.")
+        except FundingError as e:
+            err = {"INVALID_AMOUNT": "Amount must be a positive number.",
+                   "ACCOUNT_NOT_FOUND": "Select a valid account.",
+                   "ACCOUNT_NOT_ACTIVE": "Account is not active."}.get(e.code, e.code)
+        if err:
+            messages.error(request, err)
+        return redirect("manager_funding")
+    return render(request, "manager/funding.html", {"profile": profile, "accounts": accounts, "recent": recent})
+
+
 def card_requests_view(request):
     if request.user.role != "MANAGER":
         raise PermissionDenied("Manager role required")
