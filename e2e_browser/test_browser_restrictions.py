@@ -3,11 +3,22 @@ from conftest import BASE_URL, MANAGER, STAFF_PW, db, login
 
 
 def test_restrictions_listing_with_data(page):
+    # self-seed one restriction on a customer assigned to manager1
+    out = db("from apps.accounts.models import Account\n"
+             "from apps.managerops.models import AccountRestriction, CustomerManagerAssignment\n"
+             "from django.contrib.auth import get_user_model\n"
+             "m=get_user_model().objects.get(username='manager1')\n"
+             "cust_ids=list(CustomerManagerAssignment.objects.filter(manager=m, status='ACTIVE')"
+             ".values_list('customer_id', flat=True))\n"
+             "a=Account.objects.filter(customer_id__in=cust_ids, status='ACTIVE').first()\n"
+             "r=AccountRestriction.objects.create(account=a, restriction_type='TRANSFER_BLOCK', "
+             "reason='browser e2e listing restriction', requested_by=m)\n"
+             "print(r.pk)").splitlines()[-1]
     login(page, MANAGER, STAFF_PW)
     page.goto(f"{BASE_URL}/manage/restrictions/")
     body = page.content()
     assert "Active Restrictions" in body
-    assert "browser e2e restriction" in body
+    assert "browser e2e listing restriction" in body
     assert "TRANSFER_BLOCK" in body
 
 
@@ -25,7 +36,7 @@ def test_restrictions_lift_and_compliance_guard(page):
         page.wait_for_load_state()
         assert "Server Error" not in page.content()
         out = db("from apps.managerops.models import AccountRestriction\n"
-                 "print(AccountRestriction.objects.filter(reason='browser e2e restriction', "
+                 "print(AccountRestriction.objects.filter(reason='browser e2e listing restriction', "
                  "active=True).count())").splitlines()[-1]
         assert out.strip() == "0"
 
