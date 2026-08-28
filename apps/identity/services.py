@@ -202,6 +202,113 @@ def verify_otp(user, code):
 
 # ----------------------------------------------------------- MFA self-service
 
+def _fernet():
+    """Symmetric envelope for the TOTP secret, keyed from the Django secret key."""
+    import base64
+    from cryptography.fernet import Fernet
+    from django.conf import settings
+
+    key = base64.urlsafe_b64encode(
+        hashlib.sha256(settings.SECRET_KEY.encode()).digest())
+    return Fernet(key)
+
+
+def totp_uri(user, secret):
+    import urllib.parse
+
+    return urllib.parse.quote(
+        f"otpauth://totp/Bankio:{user.username}?secret={secret}&issuer=Bankio&algorithm=SHA1&digits=6&period=30",
+        safe=":/?&=")
+
+
+def totp_qr_svg(uri):
+    """Render the otpauth:// URI as a local QR Code SVG (never an external service)."""
+    import io
+    import qrcode
+    import qrcode.image.svg
+
+    img = qrcode.make(uri, image_factory=qrcode.image.svg.SvgPathImage, box_size=12)
+    buf = io.BytesIO()
+    img.save(buf)
+    return buf.getvalue().decode()
+
+
+def start_totp_enrollment(user, request=None):
+    """Generate a TOTP secret for enrollment. mfa_enabled stays False until the
+    user proves control with a valid code. Secret stored encrypted only."""
+    from apps.audit.services import record as audit
+    import pyotp
+
+    secret = pyotp.random_base32()
+    user.totp_secret_enc = _fernet().encrypt(secret.encode()).decode()
+    user.totp_last_step = 0
+    user.save(update_fields=["totp_secret_enc", "totp_last_step"])
+    audit(actor=user, action="MFA_ENABLE_STARTED", request=request,
+          metadata={"method": "TOTP"})  # never the secret itself
+    uri = totp_uri(user, secret)
+    return {"secret": secret, "uri": uri, "qr_svg": totp_qr_svg(uri)}
+
+
+def get_pending_totp_data(user):
+    """Re-render the enrollment panel from the already-pending secret (no rotation)."""
+    if not user.totp_secret_enc:
+        return None
+    try:
+        secret = _fernet().decrypt(user.totp_secret_enc.encode()).decode()
+    except Exception:
+        return None
+    uri = totp_uri(user, secret)
+    return {"secret": secret, "uri": uri, "qr_svg": totp_qr_svg(uri)}
+
+
+def verify_totp(user, code, record_step=True):
+    """RFC 6238 verification with ±1 step drift window and strict anti-replay:
+    a timestep may be accepted once (user.totp_last_step)."""
+    import pyotp
+
+    if not user.totp_secret_enc or not code or not code.strip().isdigit():
+        return False
+    try:
+        secret = _fernet().decrypt(user.totp_secret_enc.encode()).decode()
+    except Exception:
+        return False
+    totp = pyotp.TOTP(secret)
+    matched = totp.verify(str(code).strip(), valid_window=1)
+    if not matched:
+        return False
+    if record_step:
+        import time as _time
+
+        step = int(_time.time()) // 30
+        if step <= user.totp_last_step:
+            return False  # replay of an already-consumed timestep
+        user.totp_last_step = step
+        user.save(update_fields=["totp_last_step"])
+    return True
+
+
+def confirm_totp_enrollment(user, code, request=None):
+    """Activate TOTP MFA only after a valid code proves the authenticator works."""
+    from apps.audit.services import record as audit
+
+    if not user.totp_secret_enc:
+        raise MFAError("NO_PENDING_ENROLLMENT")
+    if not verify_totp(user, code, record_step=False):
+        audit(actor=user, action="MFA_VERIFICATION_FAILED", request=request,
+              metadata={"method": "TOTP"})
+        raise MFAError("INVALID_OR_EXPIRED_CODE")
+    user.mfa_enabled = True
+    user.save(update_fields=["mfa_enabled"])
+    audit(actor=user, action="MFA_ENABLED", request=request, metadata={"method": "TOTP"})
+    from apps.notifications.services import notify
+
+    notify(recipient=user, category="SECURITY", kind="MFA_ENABLED",
+           title="MFA enabled",
+           body="Two-factor authentication (authenticator app) was enabled on your account.",
+           dedup_key=f"MFA_ENABLED:{user.pk}:{user.pk}")
+    return True
+
+
 class MFAError(Exception):
     def __init__(self, code):
         super().__init__(code)
@@ -240,13 +347,15 @@ def confirm_mfa_enable(user, code, request=None):
     return True
 
 
-def disable_mfa(user, password, request=None):
-    """Disable MFA only after password reauthentication — never via a plain
-    session-authenticated POST."""
+def disable_mfa(user, password, request=None, totp_code=""):
+    """Disable MFA only after password reauthentication AND, when the user has a
+    TOTP authenticator enrolled, a currently valid TOTP code."""
     from apps.audit.services import record as audit
 
     if not password or not user.check_password(password):
         raise MFAError("REAUTHENTICATION_REQUIRED")
+    if user.totp_secret_enc and not verify_totp(user, totp_code or "", record_step=False):
+        raise MFAError("INVALID_OR_EXPIRED_CODE")
     user.mfa_enabled = False
     user.mfa_secret = ""
     user.save(update_fields=["mfa_enabled", "mfa_secret"])
@@ -409,6 +518,9 @@ def attempt_login(username, password, request):
                metadata={"evaluation": getattr(evaluation, "pk", None)})
         raise LoginRiskBlocked("sign-in refused by risk policy")
     if action == "CHALLENGE" or user.mfa_enabled:
+        if user.mfa_enabled and user.totp_secret_enc:
+            # TOTP authenticator: the code comes from the user's app — nothing to deliver
+            return user, True
         _deliver_otp(user, "mfa login" if user.mfa_enabled else "risk challenge")
         return user, True
 

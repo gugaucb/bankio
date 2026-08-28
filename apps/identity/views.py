@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render
 
 from apps.audit.services import record as audit
 from .forms import LoginForm, OTPForm
-from .services import attempt_login, verify_otp, LoginLocked, LoginRiskBlocked
+from .services import attempt_login, verify_otp, verify_totp, LoginLocked, LoginRiskBlocked
 
 
 def login_view(request):
@@ -50,13 +50,26 @@ def otp_verify_view(request):
     user = User.objects.get(pk=uid)
     if request.method == "POST":
         form = OTPForm(request.POST)
-        code_ok = verify_otp(user, form.cleaned_data["code"]) if form.is_valid() else False
+        code_ok = False
+        if form.is_valid():
+            code = form.cleaned_data["code"]
+            code_ok = verify_otp(user, code) or verify_totp(user, code)
+        if not code_ok:
+            # brute-force guard: too many bad codes force a full re-login
+            attempts = request.session.get("otp_attempts", 0) + 1
+            if attempts >= 5:
+                del request.session["pending_otp_user"]
+                request.session.pop("otp_attempts", None)
+                form.add_error(None, "Too many attempts — sign in again.")
+                return render(request, "auth/otp.html", {"form": form})
+            request.session["otp_attempts"] = attempts
         if code_ok:
             login(request, user)
             from .services import bind_session
 
             bind_session(request, user)
             del request.session["pending_otp_user"]
+            request.session.pop("otp_attempts", None)
             audit(actor=user, action="LOGIN_MFA", request=request)
             return redirect("dashboard")
         # real producer for the MFA_FAILURE_COUNT_24H auth signal
