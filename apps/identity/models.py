@@ -25,6 +25,8 @@ class User(AbstractUser):
     mfa_enabled = models.BooleanField(default=False)
     mfa_secret = models.CharField(max_length=12, blank=True)  # demo OTP secret
     otp_generated_at = models.DateTimeField(null=True, blank=True)  # TTL anchor
+    totp_secret_enc = models.TextField(blank=True)  # Fernet-encrypted TOTP secret (RFC 6238)
+    totp_last_step = models.BigIntegerField(default=0)  # anti-replay: last accepted timestep
     failed_login_count = models.PositiveIntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
 

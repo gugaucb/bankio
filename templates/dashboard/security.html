@@ -16,18 +16,30 @@
     </p>
 
     {% if not mfa_enabled %}
-    <form method="post" class="flex flex-wrap items-end gap-3">{% csrf_token %}
-      <button name="mfa_enable_start" value="1" class="btn-primary">Enable MFA</button>
-    </form>
-    <form method="post" class="mt-3 flex flex-wrap items-end gap-3">{% csrf_token %}
-      <div>
-        <label class="block text-xs text-gray-400 mb-1">Confirmation code</label>
-        <input name="mfa_code" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
-               class="border border-gray-200 rounded-lg px-3 py-2 tracking-widest w-32"
-               placeholder="000000">
+    {% if totp_data %}
+    <div class="flex flex-col sm:flex-row gap-6 items-start">
+      <div class="bg-white p-3 rounded-xl border border-gray-100">{{ totp_data.qr_svg|safe }}</div>
+      <div class="text-sm space-y-2">
+        <p class="font-semibold">Scan with your authenticator app<br>
+          <span class="text-xs text-gray-400 font-normal">(Google / Microsoft Authenticator, 1Password, Authy…)</span></p>
+        <p class="text-xs text-gray-500">Or enter the key manually:</p>
+        <code class="block bg-gray-50 rounded-lg px-3 py-2 text-xs font-mono break-all">{{ totp_data.secret }}</code>
+        <form method="post" class="flex flex-wrap items-end gap-3">{% csrf_token %}
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Authentication code</label>
+            <input name="mfa_code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" required
+                   class="border border-gray-200 rounded-lg px-3 py-2 tracking-widest w-32"
+                   placeholder="000000">
+          </div>
+          <button name="totp_confirm" value="1" class="btn-primary">Confirm &amp; enable</button>
+        </form>
       </div>
-      <button name="mfa_enable_confirm" value="1" class="btn-primary">Confirm</button>
+    </div>
+    {% else %}
+    <form method="post" class="flex flex-wrap items-end gap-3">{% csrf_token %}
+      <button name="totp_setup" value="1" class="btn-primary">Enable MFA (Authenticator app)</button>
     </form>
+    {% endif %}
     {% else %}
     <form method="post" class="flex flex-wrap items-end gap-3">{% csrf_token %}
       <div>
@@ -35,12 +47,18 @@
         <input type="password" name="password" autocomplete="current-password"
                class="border border-gray-200 rounded-lg px-3 py-2 w-56" placeholder="Password">
       </div>
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Current code</label>
+        <input name="mfa_code" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
+               class="border border-gray-200 rounded-lg px-3 py-2 tracking-widest w-32"
+               placeholder="000000">
+      </div>
       <button name="mfa_disable" value="1"
               class="text-xs px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50">
         Disable MFA
       </button>
     </form>
-    <p class="text-xs text-gray-400 mt-2">Disabling requires your password.</p>
+    <p class="text-xs text-gray-400 mt-2">Disabling requires your password and a current authenticator code.</p>
     {% endif %}
   </section>
 

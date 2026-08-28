@@ -525,6 +525,7 @@ def security_view(request):
     u = request.user
     pw_error = None
     risk_confirm_open = False
+    totp_data = None
     form = ChangePasswordForm(user=u)   # rendered on GET; rebind on POST below
     if request.method == "POST" and "change_password" in request.POST:
         form = ChangePasswordForm(user=u, data=request.POST)
@@ -600,11 +601,23 @@ def security_view(request):
             except SessionError:
                 pass
         elif "mfa_enable_start" in request.POST or "mfa_enable_confirm" in request.POST \
-                or "mfa_disable" in request.POST:
+                or "mfa_disable" in request.POST or "totp_setup" in request.POST \
+                or "totp_confirm" in request.POST:
             from .services import MFAError, confirm_mfa_enable, disable_mfa, start_mfa_enable
 
             try:
-                if "mfa_enable_start" in request.POST:
+                if "totp_setup" in request.POST:
+                    from .services import start_totp_enrollment
+
+                    totp_data = start_totp_enrollment(u, request=request)
+                elif "totp_confirm" in request.POST:
+                    from .services import confirm_totp_enrollment
+
+                    confirm_totp_enrollment(u, request.POST.get("mfa_code") or "", request=request)
+                    request.session.pop("totp_enrollment", None)
+                    messages.success(request, "MFA enabled (authenticator app).")
+                    return redirect("app_security")
+                elif "mfa_enable_start" in request.POST:
                     start_mfa_enable(u, request=request)
                     messages.success(request,
                                      "A confirmation code was sent to you. Enter it below to enable MFA.")
@@ -612,14 +625,20 @@ def security_view(request):
                     confirm_mfa_enable(u, request.POST.get("mfa_code") or "", request=request)
                     messages.success(request, "MFA enabled.")
                 else:
-                    disable_mfa(u, request.POST.get("password") or "", request=request)
+                    disable_mfa(u, request.POST.get("password") or "", request=request,
+                                totp_code=request.POST.get("mfa_code") or "")
                     messages.success(request, "MFA disabled.")
                     return redirect("app_security")
             except MFAError as e:
                 messages.error(request, {
                     "INVALID_OR_EXPIRED_CODE": "Invalid or expired code.",
                     "REAUTHENTICATION_REQUIRED": "Password incorrect — MFA is still enabled.",
+                    "NO_PENDING_ENROLLMENT": "Start the authenticator setup first.",
                 }.get(e.code, str(e)))
+                if "totp_confirm" in request.POST:
+                    from .services import get_pending_totp_data
+
+                    totp_data = get_pending_totp_data(u)
         else:
             from .services import DeviceError, revoke_device, trust_device, untrust_device
 
@@ -636,7 +655,9 @@ def security_view(request):
             except (DeviceError, ValueError, TypeError):
                 # foreign/unknown ids are silent no-ops; back to the page
                 pass
-        return redirect("app_security")
+        if totp_data is None:
+            return redirect("app_security")
+        # totp_setup: fall through so the full page renders with the QR code
 
     from apps.audit.models import AuditLog
 
@@ -689,6 +710,7 @@ def security_view(request):
         "history_entries": history_entries,
         "mfa_enabled": u.mfa_enabled,
         "mfa_confirm_open": request.POST.get("mfa_enable_start") == "1",
+        "totp_data": totp_data,
         "risk_confirm_open": risk_confirm_open,
     })
 
