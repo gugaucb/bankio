@@ -239,7 +239,10 @@ def approvals_queue(request):
 @login_required
 def restrictions_view(request):
     profile = _ctx(request)
-    active = AccountRestriction.objects.filter(active=True).select_related("account__customer")
+    active = (AccountRestriction.objects
+              .filter(active=True, account__customer__in=visible_customers(profile).values("user_id"))
+              .select_related("account__customer", "requested_by", "approved_by")
+              .order_by("-effective_at"))
     return render(request, "manager/restrictions.html", {"active": active})
 
 
