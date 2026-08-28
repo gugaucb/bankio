@@ -75,9 +75,10 @@ def _audit_admin_action(actor, action, target, request=None, **metadata):
 
 @transaction.atomic
 def create_user(*, actor, username, email, password, role=Role.CUSTOMER,
-                first_name="", last_name="", phone="", request=None):
+                first_name="", last_name="", phone="", request=None, branch_id=None):
     """Create a system user. Role comes from the explicit allow-list below —
-    never straight from POST (no mass assignment)."""
+    never straight from POST (no mass assignment). Managers get a ManagerProfile
+    so they can actually access managerops; staff role assignment is ADMIN-only."""
     _require_admin(actor)
     if role not in Role.values:
         raise AdminUserError("INVALID_ROLE")
@@ -93,6 +94,15 @@ def create_user(*, actor, username, email, password, role=Role.CUSTOMER,
         username=username, email=email, password=password, role=role,
         first_name=first_name, last_name=last_name, phone=phone,
     )
+    if role == Role.MANAGER:
+        from apps.managerops.models import BankBranch, ManagerProfile
+
+        branch = None
+        if branch_id:
+            branch = BankBranch.objects.filter(pk=branch_id).first()
+            if branch is None:
+                raise AdminUserError("INVALID_BRANCH")
+        ManagerProfile.objects.create(user=user, level="RELATIONSHIP_MANAGER", branch=branch)
     _audit_admin_action(actor, "ADMIN_USER_CREATED", user, request=request,
                         role=user.role)
     return user

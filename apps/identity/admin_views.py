@@ -45,6 +45,7 @@ def user_create(request):
                 password=request.POST.get("password", ""), role=form["role"],
                 first_name=form["first_name"], last_name=form["last_name"],
                 phone=form["phone"], request=request,
+                branch_id=request.POST.get("branch") or None,
             )
             messages.success(request, f"User {user.username} created.")
             return redirect("admin_user_detail", user_id=user.pk)
@@ -52,9 +53,12 @@ def user_create(request):
             error = e.message if hasattr(e, "message") and e.message else e.code
         except Exception:
             error = "Could not create user."
+    from apps.managerops.models import BankBranch
+
     return render(request, "manager/user_form.html", {
         "nav": "users", "page_heading": "New User",
         "form": form, "error": error, "roles": Role.choices,
+        "branches": BankBranch.objects.all(),
     })
 
 
