@@ -23,22 +23,29 @@ def test_change_password_success(page):
 
 
 def test_mfa_enable_and_disable_flow(page):
+    """MFA enable/disable via the TOTP authenticator UI (legacy email-OTP UI retired)."""
+    import pyotp
     from conftest import db
     db("from django.contrib.auth import get_user_model\n"
        f"u=get_user_model().objects.get(username='{CUSTOMER}')\n"
-       "u.mfa_enabled=False; u.mfa_secret=''; u.save()")
+       "u.mfa_enabled=False; u.mfa_secret=''; u.totp_secret_enc=''; u.totp_last_step=0; u.save()")
     login(page)
     page.goto(f"{BASE_URL}/app/security/")
-    page.click("button[name=mfa_enable_start]")
+    page.click("button[name=totp_setup]")
     page.wait_for_load_state("networkidle")
     assert page.locator("input[name=mfa_code]").count() == 1
-    code = otp_code(CUSTOMER, purpose="mfa enable") or otp_code(CUSTOMER)
-    page.fill("input[name=mfa_code]", code)
-    page.click("button[name=mfa_enable_confirm]")
+    secret = db(f"from django.contrib.auth import get_user_model\n"
+                f"from apps.identity.services import _fernet\n"
+                f"u=get_user_model().objects.get(username='{CUSTOMER}')\n"
+                f"print(_fernet().decrypt(u.totp_secret_enc.encode()).decode())").splitlines()[-1]
+    t = pyotp.TOTP(secret)
+    page.fill("input[name=mfa_code]", t.now())
+    page.click("button[name=totp_confirm]")
     page.wait_for_load_state("networkidle")
     assert "mfa enabled" in page.content().lower()
-    # disable with password
+    # disable with password + current TOTP code
     page.fill("input[name=password]", CUSTOMER_PW)
+    page.fill("input[name=mfa_code]", t.now())
     page.click("button[name=mfa_disable]")
     page.wait_for_load_state("networkidle")
     assert "mfa disabled" in page.content().lower()
