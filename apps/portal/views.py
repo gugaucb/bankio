@@ -269,8 +269,21 @@ def application_status(request, reference: str):
 
 # ------------------------------------------------------------ manager access
 
+def _institutional_destination(user):
+    """ADMIN lands on the user-management panel; MANAGER on the ops dashboard."""
+    from django.urls import reverse
+
+    if user.role == "ADMIN" or user.is_superuser:
+        return reverse("admin_users")
+    return reverse("manager_dashboard")
+
+
+def _is_institutional(user) -> bool:
+    return user.has_role("MANAGER", "ADMIN") or user.is_superuser
+
+
 def manager_login(request):
-    """Dedicated institutional authentication. Only MANAGER role may proceed."""
+    """Dedicated institutional authentication. MANAGER or ADMIN roles may proceed."""
     error = ""
     if request.method == "POST":
         username = request.POST.get("username", "")
@@ -287,16 +300,16 @@ def manager_login(request):
                 # MFA required before any role decision is made
                 request.session["manager_pending_otp_user"] = auth_user.pk
                 return redirect("manager_login_otp")
-            elif not auth_user.has_role("MANAGER"):
+            elif not _is_institutional(auth_user):
                 audit(actor=auth_user, action="MANAGER_LOGIN_DENIED", request=request)
-                logout(request)  # never leave a non-manager authenticated via this flow
+                logout(request)  # never leave a non-staff authenticated via this flow
                 error = "Manager role required."
             else:
                 login(request, auth_user)
-                audit(actor=auth_user, action="MANAGER_LOGIN", request=request)
-                return redirect("manager_dashboard")
-    elif request.user.is_authenticated and request.user.has_role("MANAGER"):
-        return redirect("manager_dashboard")
+                audit(actor=auth_user, action="ADMIN_LOGIN" if (auth_user.role == "ADMIN" or auth_user.is_superuser) else "MANAGER_LOGIN", request=request)
+                return redirect(_institutional_destination(auth_user))
+    elif request.user.is_authenticated and _is_institutional(request.user):
+        return redirect(_institutional_destination(request.user))
     return render(request, "site/manager_login.html", {"error": error}, status=403 if error == "Manager role required." else 200)
 
 
@@ -305,17 +318,19 @@ def manager_login_otp(request):
     if not uid:
         return redirect("manager_login")
     user = User.objects.get(pk=uid)
-    from apps.identity.services import verify_otp
+    from apps.identity.services import verify_otp, verify_totp
+
     code = request.POST.get("code", "")
-    if request.method == "POST" and verify_otp(user, code):
+    if request.method == "POST" and (verify_otp(user, code) or verify_totp(user, code, record_step=True)):
         del request.session["manager_pending_otp_user"]
-        if not user.has_role("MANAGER"):
+        if not _is_institutional(user):
             audit(actor=user, action="MANAGER_LOGIN_DENIED", request=request)
             return render(request, "site/manager_login.html",
                           {"error": "Manager role required."}, status=403)
         login(request, user)
-        audit(actor=user, action="MANAGER_LOGIN_MFA", request=request)
-        return redirect("manager_dashboard")
+        is_admin = user.role == "ADMIN" or user.is_superuser
+        audit(actor=user, action="ADMIN_LOGIN_MFA" if is_admin else "MANAGER_LOGIN_MFA", request=request)
+        return redirect(_institutional_destination(user))
     return render(request, "site/manager_otp.html",
                   {"error": "Invalid code" if request.method == "POST" else ""})
 
