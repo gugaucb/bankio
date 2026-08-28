@@ -19,4 +19,5 @@ urlpatterns = [
 urlpatterns += [
     path("manage/card-requests/", views.card_requests_view, name="manager_card_requests"),
     path("manage/card-requests/<int:req_id>/decide/", views.decide_card_request, name="manager_decide_card"),
+    path("manage/funding/", views.funding_view, name="manager_funding"),
 ]
