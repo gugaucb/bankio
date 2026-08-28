@@ -54,6 +54,62 @@ def test_admin_create_user_and_block_unblock(page):
 
 
 # -------------------------------------------------------------- MANAGER
+def test_admin_manager_lifecycle(page):
+    """ADMIN creates a manager -> manager reaches /manage -> block kills session
+    and blocks login -> unblock restores access."""
+    import time
+    uname = f"mgr.e2e.{int(time.time())}"
+    pw = "Manager-E2E-9"
+    login(page, "admin", STAFF_PW)
+    page.goto(f"{BASE_URL}/manage/users/new/")
+    page.fill("input[name=username]", uname)
+    page.fill("input[name=email]", f"{uname}@example.com")
+    page.select_option("select[name=role]", "MANAGER")
+    page.fill("input[name=password]", pw)
+    page.click("button:has-text('Create User')")
+    page.wait_for_load_state()
+    # manager can access managerops (separate browser context = separate session)
+    mgr_ctx = page.context.browser.new_context()
+    mgr_page = mgr_ctx.new_page()
+    login(mgr_page, uname, pw)
+    mgr_page.goto(f"{BASE_URL}/manage/")
+    assert "Server Error" not in mgr_page.content()
+    assert mgr_page.locator("aside").count() >= 1 or "/login/" not in mgr_page.url
+    # ADMIN blocks the manager
+    page.goto(f"{BASE_URL}/manage/users/?q={uname}")
+    href = page.locator("table tbody tr", has_text=uname).locator(
+        "a[href*='/manage/users/']").first.get_attribute("href")
+    page.goto(f"{BASE_URL}{href}")
+    page.on("dialog", lambda d: d.accept())
+    blk = page.locator("form[action*='/block/']")
+    blk.locator("textarea[name=reason]").fill("e2e block")
+    blk.locator("button").click()
+    page.wait_for_load_state()
+    # manager session is dead: refresh lands away from /manage
+    mgr_page.goto(f"{BASE_URL}/manage/")
+    assert "/login/" in mgr_page.url or "Manager role" in mgr_page.content() \
+        or mgr_page.locator("aside").count() == 0
+    # fresh login refused
+    mgr_ctx.clear_cookies()
+    mgr_page.goto(f"{BASE_URL}/login/")
+    mgr_page.fill("input[name=username]", uname)
+    mgr_page.fill("input[name=password]", pw)
+    mgr_page.click("button[type=submit]")
+    mgr_page.wait_for_load_state()
+    assert mgr_page.locator("aside").count() == 0
+    # ADMIN unblocks -> login works again
+    page.goto(f"{BASE_URL}{href}")
+    ub = page.locator("form[action*='/unblock/']")
+    ub.locator("textarea[name=reason]").fill("e2e unblock")
+    ub.locator("button").click()
+    page.wait_for_load_state()
+    login(mgr_page, uname, pw)
+    mgr_page.goto(f"{BASE_URL}/manage/")
+    assert mgr_page.locator("aside").count() >= 1
+    mgr_page.close()
+    mgr_ctx.close()
+
+
 def test_manager_dashboard_and_customer_search(page):
     login(page, MANAGER, STAFF_PW)
     for path in ("/manage/", "/manage/customers/"):
