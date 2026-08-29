@@ -65,7 +65,11 @@ def test_does_not_list_other_users_devices(alice, bob):
     body = _client(alice).get("/app/security/").content.decode()
     assert "Alice phone" in body
     assert "Bob laptop" not in body
-    assert str(theirs.pk) not in body
+    # the foreign device must never appear in a device action form; a bare
+    # `str(pk) not in body` false-positives on incidental page content (CSS,
+    # JS, chart colors) when the pk sequence happens to collide
+    assert f'name="device" value="{theirs.pk}"' not in body
+    assert f'>Bob laptop<' not in body                  # no foreign row rendered
 
 
 # ------------------------------------------------------------------ actions
