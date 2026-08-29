@@ -6,7 +6,7 @@ pytest-django==4.9.0
 pytest-cov==6.0.0
 hypothesis==6.122.1
 playwright==1.49.1
-gunicorn==23.0.0
+gunicorn==26.2.0
 cryptography==44.0.1
 whitenoise==6.8.2
 pyotp==2.9.0
