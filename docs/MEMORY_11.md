@@ -35,5 +35,8 @@ Branches merged com JUDGE PASS e regressão pós-merge verde (base v1.1.1).
 - Bônus corrigido pelo juiz: TOTP agora aceito no manager OTP view (record_step=True, anti-replay preservado).
 - Testes: 6 unit (test_admin_portal_access.py) + 2 browser; regressão 844+75 verdes.
 
+## Decisão do mantenedor (2026-08-28)
+- **Multi-perfil (roles M2M): limitação documentada** — User.role permanece CharField único (1 papel/usuário). Mudança arquitetural adiada.
+
 ## Estado final
 main = 69288bb (merge admin-portal-access); 844 container + 75 browser E2E verdes; hub-image/publicação não solicitada nesta fase.
