@@ -4,6 +4,22 @@ Banco digital simulado — monolito modular Django sobre um **ledger de partidas
 
 > Simulador educacional/demonstração. **Não** é produção-banking real: não há integração com pagamentos externos, PSPs ou redes de cartão.
 
+## Screenshots
+
+| Dashboard do cliente | Transferências |
+|---|---|
+| ![Dashboard](docs/screenshots/customer-dashboard.png) | ![Transfers](docs/screenshots/customer-transfers.png) |
+
+| Cartões | Segurança (MFA, dispositivos, sessões) |
+|---|---|
+| ![Cards](docs/screenshots/customer-cards.png) | ![Security](docs/screenshots/customer-security.png) |
+
+| Portal do manager | Gestão de usuários (admin) |
+|---|---|
+| ![Manager](docs/screenshots/manager-portal.png) | ![Admin](docs/screenshots/admin-users.png) |
+
+*Regenere com o app no ar: `python docs/capture_screenshots.py`.*
+
 ## Arquitetura (resumo)
 
 | Camada | Tecnologia |
