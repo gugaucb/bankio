@@ -38,6 +38,9 @@ def _ctx(request):
 
 @login_required
 def manager_dashboard(request):
+    # ADMINs have no ManagerProfile: route them to their own panel instead of 403
+    if request.user.role == "ADMIN" or request.user.is_superuser:
+        return redirect("admin_users")
     profile = _ctx(request)
     customers = visible_customers(profile)
     accounts = Account.objects.filter(customer__in=customers.values("pk"))

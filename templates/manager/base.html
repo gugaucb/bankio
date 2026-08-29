@@ -6,6 +6,7 @@
       <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-900 grid place-items-center font-bold">B</div>
       <div><p class="font-bold leading-tight">Bankio Ops</p><p class="text-[10px] text-emerald-300">{{ profile.get_level_display|default:"Manager" }}</p></div>
     </div>
+    {% if request.user.role == 'MANAGER' %}
     <a data-tour="nav-dashboard" href="/manage/" class="px-3 py-2 rounded-lg hover:bg-emerald-900 {% if request.path == '/manage/' %}bg-emerald-800{% endif %}">▤ Overview</a>
     <a href="/manage/customers/" class="px-3 py-2 rounded-lg hover:bg-emerald-900">👥 Customers</a>
     <a href="/manage/customers/?new=1" class="px-3 py-2 rounded-lg hover:bg-emerald-900">＋ Open Customer</a>
@@ -14,6 +15,7 @@
     <a href="/manage/approvals/" class="px-3 py-2 rounded-lg hover:bg-emerald-900">✓ Approvals</a>
     <a href="/manage/funding/" class="px-3 py-2 rounded-lg hover:bg-emerald-900 {% if request.path == '/manage/funding/' %}bg-emerald-800{% endif %}">💵 Funding</a>
     <a href="/manage/restrictions/" class="px-3 py-2 rounded-lg hover:bg-emerald-900">⛔ Restrictions</a>
+    {% endif %}
     {% if request.user.is_superuser or request.user.role == 'ADMIN' %}
     <a href="{% url 'admin_users' %}" class="px-3 py-2 rounded-lg hover:bg-emerald-900 {% if '/manage/users' in request.path %}bg-emerald-800{% endif %}">🛡 Users</a>
     <a href="{% url 'admin_users' %}?role=MANAGER" class="px-3 py-2 rounded-lg hover:bg-emerald-900">🧑‍💼 Managers</a>
