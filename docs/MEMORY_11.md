@@ -28,5 +28,12 @@ Branches merged com JUDGE PASS e regressão pós-merge verde (base v1.1.1).
 - Tour (Driver.js) intercepta cliques em browser E2E de usuários novos → helper `_skip_tour` (Escape).
 - Playwright: página extra precisa de **browser.new_context()** (nova page no mesmo contexto compartilha cookies/sessão).
 
+## Pós-fase: feat/admin-manager-portal-access (2026-08-28) — PASS
+- /manager/login/ (+OTP) aceita ADMIN/superuser: ADMIN → /manage/users/ (audit ADMIN_LOGIN[_MFA]), MANAGER → /manage/; cliente segue 403.
+- /manage/ com ADMIN sem ManagerProfile → redirect ao painel de usuários (não 403).
+- Sidebar contextual por role: manager vê só links managerops; admin só Users/Managers.
+- Bônus corrigido pelo juiz: TOTP agora aceito no manager OTP view (record_step=True, anti-replay preservado).
+- Testes: 6 unit (test_admin_portal_access.py) + 2 browser; regressão 844+75 verdes.
+
 ## Estado final
-main = dc6029a + merge final; 838 container + 73 browser E2E verdes; hub-image/publicação não solicitada nesta fase.
+main = 69288bb (merge admin-portal-access); 844 container + 75 browser E2E verdes; hub-image/publicação não solicitada nesta fase.
